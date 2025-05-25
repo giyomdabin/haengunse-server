@@ -8,6 +8,7 @@ import fortune.haengunseserver.domain.fortune.today.service.agefortune.AgeFortun
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +33,7 @@ public class AgeScheduler {
     private List<List<AgeResponseDto>> dummyVariants = null;
 
 
+    @Async
     @Scheduled(cron = "0 59 23 * * *", zone = "Asia/Seoul")
     public void updateAgeFortune() {
 
