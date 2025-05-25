@@ -3,6 +3,8 @@ package fortune.haengunseserver.domain.manse.controller;
 import fortune.haengunseserver.domain.manse.dto.request.ManseRequest;
 import fortune.haengunseserver.domain.manse.dto.response.ManseResponse;
 import fortune.haengunseserver.domain.manse.service.ManseCalculator;
+import fortune.haengunseserver.global.exception.code.ErrorCode;
+import fortune.haengunseserver.global.swagger.ApiErrorCodeExamples;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -28,6 +30,7 @@ public class ManseController {
             description = "만세력 정상 반환",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ManseResponse.class))
     )
+    @ApiErrorCodeExamples({ErrorCode.KASI_ERROR, ErrorCode.INVALID_DATE_FORMAT, ErrorCode.XML_PARSE_ERROR})
     @PostMapping("/calculate")
     public ResponseEntity<ManseResponse> calculateManse(@RequestBody @Valid ManseRequest request) {
         ManseResponse manseInfo = manseCalculator.calculateManse(request);

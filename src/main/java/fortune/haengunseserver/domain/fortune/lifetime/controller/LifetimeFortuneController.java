@@ -3,6 +3,8 @@ package fortune.haengunseserver.domain.fortune.lifetime.controller;
 import fortune.haengunseserver.domain.fortune.common.dto.request.SajuRequest;
 import fortune.haengunseserver.domain.fortune.lifetime.dto.response.LifetimeSajuResponse;
 import fortune.haengunseserver.domain.fortune.lifetime.service.LifetimeFortuneService;
+import fortune.haengunseserver.global.exception.code.ErrorCode;
+import fortune.haengunseserver.global.swagger.ApiErrorCodeExamples;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -27,6 +29,7 @@ public class LifetimeFortuneController {
             description = "평생운세 정상 반환",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = LifetimeSajuResponse.class))
     )
+    @ApiErrorCodeExamples({ErrorCode.GPT_ERROR, ErrorCode.GPT_OVERLOADED, ErrorCode.PARSE_ERROR, ErrorCode.INVALID_MANSE_FORMAT})
     @PostMapping
     public ResponseEntity<LifetimeSajuResponse> getLifetimeFortune(@RequestBody SajuRequest request) {
         LifetimeSajuResponse fortune = lifetimeFortuneService.getFortune(request);
