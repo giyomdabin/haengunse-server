@@ -4,11 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
 
 @RequiredArgsConstructor
+@Slf4j
 public abstract class FortuneRequestService<T, R> implements FortuneService<T, R> {
 
     protected final OpenAiChatModel chatModel; // Spring AI GPT 모델
@@ -20,6 +22,8 @@ public abstract class FortuneRequestService<T, R> implements FortuneService<T, R
         try {
             ChatResponse response = chatModel.call(prompt);
             return processResponse(response);
+        } catch (CustomException e) {
+            throw e;
         } catch (Exception e) {
             throw mapToGptException(e);
         }

@@ -2,6 +2,8 @@ package fortune.haengunseserver.domain.calendar.service;
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import fortune.haengunseserver.domain.calendar.dto.response.LunToSolResponse;
+import fortune.haengunseserver.global.exception.CustomException;
+import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,7 +41,7 @@ public class CalendarService {
             int start = xml.indexOf("<item>");
             int end = xml.indexOf("</item>");
             if (start == -1 || end == -1) {
-                return Mono.error(new RuntimeException("item 태그 없음"));
+                return Mono.error(new CustomException(ErrorCode.XML_PARSE_ERROR));
             }
 
             // <item> 태그만 추출
@@ -51,7 +53,7 @@ public class CalendarService {
 
             return Mono.just(result);
         } catch (Exception e) {
-            return Mono.error(new RuntimeException("XML 파싱 실패", e));
+            return Mono.error(new CustomException(ErrorCode.XML_PARSE_ERROR));
         }
     }
 }

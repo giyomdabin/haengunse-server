@@ -3,6 +3,9 @@ package fortune.haengunseserver.domain.fortune.today.service.dream;
 import fortune.haengunseserver.domain.fortune.today.dto.response.dream.DreamResponse;
 import fortune.haengunseserver.domain.gpt.service.FortuneRequestService;
 import fortune.haengunseserver.domain.gpt.util.ChatResponseParser;
+import fortune.haengunseserver.global.exception.CustomException;
+import fortune.haengunseserver.global.exception.code.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -11,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@Slf4j
 public class DreamService extends FortuneRequestService<List<String>, DreamResponse> {
 
     public DreamService(OpenAiChatModel chatModel) {
@@ -20,7 +24,9 @@ public class DreamService extends FortuneRequestService<List<String>, DreamRespo
     @Override
     public Prompt generatePrompt(List<String> questions) {
 
-        // 질문 개수가 초과한 경우 -> 예외처리
+        if (questions.size() > 3) {
+            throw new CustomException(ErrorCode.TOO_MANY_QUESTIONS);
+        }
 
         StringBuilder contentBuilder = new StringBuilder();
         contentBuilder.append("다음을 보고 꿈을 해석해주세요:\n\n");
@@ -48,6 +54,7 @@ public class DreamService extends FortuneRequestService<List<String>, DreamRespo
 
     @Override
     protected DreamResponse processResponse(ChatResponse response) {
+        log.warn(String.valueOf(response));
         return ChatResponseParser.parse(response, DreamResponse.class);
     }
 }

@@ -2,8 +2,13 @@ package fortune.haengunseserver.domain.gpt.util;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fortune.haengunseserver.global.exception.CustomException;
+import fortune.haengunseserver.global.exception.code.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.http.HttpStatus;
 
+@Slf4j
 public class ChatResponseParser {
 
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -15,7 +20,8 @@ public class ChatResponseParser {
         try {
             return mapper.readValue(cleaned, className);
         } catch (Exception e) {
-            throw new IllegalStateException("GPT 응답 파싱 실패: " + cleaned, e);
+            log.warn("JSON 파싱 실패: {}", cleaned, e);
+            throw new CustomException(ErrorCode.PARSE_ERROR);
         }
     }
 
@@ -26,7 +32,8 @@ public class ChatResponseParser {
         try {
             return mapper.readValue(cleaned, typeRef);
         } catch (Exception e) {
-            throw new IllegalStateException("GPT 응답 파싱 실패: " + cleaned, e);
+            log.warn("JSON 파싱 실패: {}", cleaned, e);
+            throw new CustomException(ErrorCode.PARSE_ERROR);
         }
     }
 }

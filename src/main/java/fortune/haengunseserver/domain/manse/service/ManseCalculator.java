@@ -2,6 +2,7 @@ package fortune.haengunseserver.domain.manse.service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
 import fortune.haengunseserver.domain.manse.enums.HourBranch;
@@ -33,21 +34,27 @@ public class ManseCalculator {
 
         LocalDate solDate;
 
-        if (isSolar) {
-            solDate = LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        } else {
-            LocalDate lunDate = LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        try {
+            if (isSolar) {
+                solDate = LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            } else {
+                LocalDate lunDate = LocalDate.parse(birthDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
-            String lunYear = String.valueOf(lunDate.getYear());
-            String lunMonth = pad2(lunDate.getMonthValue()); // "09"
-            String lunDay = pad2(lunDate.getDayOfMonth()); // "01" ~ "31"
+                String lunYear = String.valueOf(lunDate.getYear());
+                String lunMonth = pad2(lunDate.getMonthValue()); // "09"
+                String lunDay = pad2(lunDate.getDayOfMonth()); // "01" ~ "31"
 
-            try {
-                // 한국천문연구원 API 호출 (음력 → 양력)
-                solDate = kasiClient.convertToSolar(lunYear, lunMonth, lunDay).block().toLocalDate();
-            } catch (Exception e) {
-                throw new CustomException(ErrorCode.KASI_ERROR);
+                try {
+                    // 한국천문연구원 API 호출 (음력 → 양력)
+                    solDate = kasiClient.convertToSolar(lunYear, lunMonth, lunDay).block().toLocalDate();
+                } catch (CustomException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new CustomException(ErrorCode.KASI_ERROR);
+                }
             }
+        } catch (DateTimeParseException e) {
+            throw new CustomException(ErrorCode.INVALID_DATE_FORMAT);
         }
 
         String yearGanZhi = getYearGanZhi(solDate);
