@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
-public class StarFortuneService extends FortuneRequestService<Void, List<StarResponseDto>> {
+public class StarFortuneService extends FortuneRequestService<String, List<StarResponseDto>> {
 
 
     public StarFortuneService(OpenAiChatModel chatModel, StarFortuneStore starFortuneStore) {
@@ -23,8 +23,7 @@ public class StarFortuneService extends FortuneRequestService<Void, List<StarRes
 
     // 오늘의 별자리 운세 프롬프트
     @Override
-    public Prompt generatePrompt(Void input) {
-        String todayDate = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
+    public Prompt generatePrompt(String input) {
 
         String content = String.format("""
                         오늘의 12별자리 운세를 봐주세요.
@@ -51,7 +50,7 @@ public class StarFortuneService extends FortuneRequestService<Void, List<StarRes
                         2. 오늘의 운세 메시지는 4줄 이상의 문장으로 대답해주세요.
                         3. 암별자리라는 말은 사용하지말고, 게자리라고 표현해주세요.
                         """,
-                todayDate
+                input
         );
 
         return new Prompt(content);

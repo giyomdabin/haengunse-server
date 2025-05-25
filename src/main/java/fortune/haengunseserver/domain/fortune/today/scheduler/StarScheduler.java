@@ -1,42 +1,70 @@
 package fortune.haengunseserver.domain.fortune.today.scheduler;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fortune.haengunseserver.domain.fortune.today.dto.response.starfortune.StarResponseDto;
 import fortune.haengunseserver.domain.fortune.today.service.starfortune.StarFortuneService;
 import fortune.haengunseserver.domain.fortune.today.service.starfortune.StarFortuneStore;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class StarScheduler {
 
     private final StarFortuneService starFortuneService;
     private final StarFortuneStore starFortuneStore; // 내부 저장소
+    private final ObjectMapper mapper;
 
-    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
-    public void updateStarFortunesDaily() {
+    private List<List<StarResponseDto>> dummyVariants = null;
 
-        int maxRetries = 3;
-        int delayMillis = 10000; // 10초 후 재시도
+    @Scheduled(cron = "0 59 23 * * *", zone = "Asia/Seoul")
+    public void updateStarFortune() {
 
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                List<StarResponseDto> fortunes = starFortuneService.getFortune(null); // 인터페이스 호출
-                starFortuneStore.update(fortunes); // 저장소 업데이트
-                return;
-            } catch (Exception e) {
-                if (attempt < maxRetries) {
-                    try {
-                        Thread.sleep(delayMillis); // 재시도 전 대기
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
+        String tomorrow = LocalDate.now(ZoneId.of("Asia/Seoul"))
+                .plusDays(1)
+                .format(DateTimeFormatter.ISO_DATE);
+
+        List<StarResponseDto> fortunes;
+
+        try {
+            fortunes = starFortuneService.getFortune(tomorrow);   // GPT 호출
+        } catch (Exception e) {
+            fortunes = randomDummy();                            // 실패 → 더미
+            log.warn("더미 운세 적용: {}", fortunes);
+        }
+
+        starFortuneStore.update(fortunes);
+    }
+
+    private List<StarResponseDto> randomDummy() {
+        if (dummyVariants == null) {
+            try (InputStream in = new ClassPathResource("data/star_fortune/star_fortune_dummy.json").getInputStream()) {
+                TypeReference<Map<String, List<List<StarResponseDto>>>> type = new TypeReference<>() {};
+                Map<String, List<List<StarResponseDto>>> parsed = mapper.readValue(in, type);
+
+                dummyVariants = parsed.get("variants");
+
+            } catch (IOException e) {
+                log.error("더미 로딩 실패", e);
+                return List.of(); // fallback 처리
             }
         }
+
+        int idx = ThreadLocalRandom.current().nextInt(dummyVariants.size());
+        return dummyVariants.get(idx);
     }
 }
