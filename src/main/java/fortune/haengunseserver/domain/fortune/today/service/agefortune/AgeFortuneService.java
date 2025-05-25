@@ -14,15 +14,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
-public class AgeFortuneService extends FortuneRequestService<Void, List<AgeResponseDto>> {
+public class AgeFortuneService extends FortuneRequestService<String, List<AgeResponseDto>> {
 
     public AgeFortuneService(OpenAiChatModel chatModel) {
         super(chatModel);
     }
 
     @Override
-    public Prompt generatePrompt(Void input) {
-        String todayDate = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
+    public Prompt generatePrompt(String input) {
 
         String content = String.format("""
                         오늘의 12지신 띠 운세(쥐띠, 소띠, 호랑이띠, 토끼띠, 용띠, 뱀띠, 말띠, 양띠, 원숭이띠, 닭띠, 개띠, 돼지띠)를 봐주세요.
@@ -47,7 +46,7 @@ public class AgeFortuneService extends FortuneRequestService<Void, List<AgeRespo
                                         
                         운세 메시지는 4줄 이상으로 작성해주세요.
                 """,
-                todayDate
+                input
         );
 
         return new Prompt(content);
