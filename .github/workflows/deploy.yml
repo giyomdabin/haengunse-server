@@ -48,8 +48,13 @@ jobs:
           script: |
             cd /home/ubuntu/haengunse-server
             
-            # JAR 파일을 app.jar로 이름 변경
-            mv build/libs/*.jar ./app.jar
+            # JAR 파일을 app.jar로 이름 변경 (경로 수정)
+            if [ -f build/libs/*.jar ]; then
+              mv build/libs/*.jar ./app.jar
+            else
+              echo "JAR file not found in build/libs/"
+              exit 1
+            fi
             
             # .env 파일 존재 확인
             if [ ! -f .env ]; then
