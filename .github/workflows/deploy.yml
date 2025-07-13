@@ -48,9 +48,16 @@ jobs:
           script: |
             cd /home/ubuntu/haengunse-server
             
-            # JAR 파일을 app.jar로 이름 변경 (경로 수정)
-            if [ -f build/libs/*.jar ]; then
-              mv build/libs/*.jar ./app.jar
+            # JAR 파일 확인 및 이동 (plain 버전 제외)
+            echo "Checking for JAR files..."
+            ls -la build/libs/
+            
+            # plain이 아닌 JAR 파일 찾기
+            JAR_FILE=$(find build/libs/ -name "*.jar" ! -name "*-plain.jar" | head -1)
+            
+            if [ -n "$JAR_FILE" ]; then
+              echo "Found JAR file: $JAR_FILE"
+              mv "$JAR_FILE" ./app.jar
             else
               echo "JAR file not found in build/libs/"
               exit 1
