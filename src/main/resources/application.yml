@@ -29,8 +29,11 @@ spring:
                     options:
                         model: ${OPENAI_MODEL}
 
-    kasi:
-        api-key: ${KASI_API_KEY}
+kasi:
+    api-key: ${KASI_API_KEY}
+
+cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
 server:
     port: 8080

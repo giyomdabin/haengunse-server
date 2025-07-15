@@ -48,11 +48,10 @@ jobs:
           script: |
             cd /home/ubuntu/haengunse-server
             
-            # JAR 파일 확인 및 이동 (plain 버전 제외)
+            # JAR 파일 확인 및 이동
             echo "Checking for JAR files..."
             ls -la build/libs/
             
-            # plain이 아닌 JAR 파일 찾기
             JAR_FILE=$(find build/libs/ -name "*.jar" ! -name "*-plain.jar" | head -1)
             
             if [ -n "$JAR_FILE" ]; then
@@ -63,11 +62,17 @@ jobs:
               exit 1
             fi
             
-            # .env 파일 존재 확인
-            if [ ! -f .env ]; then
-              echo "Error: .env file not found!"
-              exit 1
-            fi
+            # .env 파일 삭제 (더 이상 사용하지 않음)
+            rm -f .env
+            
+            # GitHub Secrets를 환경변수로 설정
+            export DB_URL="${{ secrets.DB_URL }}"
+            export DB_USERNAME="${{ secrets.DB_USERNAME }}"
+            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+            export OPENAI_MODEL="${{ secrets.OPENAI_MODEL }}"
+            export KASI_API_KEY="${{ secrets.KASI_API_KEY }}"
+            export CORS_ALLOWED_ORIGINS="${{ secrets.CORS_ALLOWED_ORIGINS }}"
             
             # Docker Compose로 재시작
             docker-compose down
