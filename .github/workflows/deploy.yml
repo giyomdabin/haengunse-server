@@ -45,15 +45,14 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: DB_URL,DB_USERNAME,DB_PASSWORD,OPENAI_API_KEY,OPENAI_MODEL,KASI_API_KEY,CORS_ALLOWED_ORIGINS
           script: |
             cd /home/ubuntu/haengunse-server
             
-            # JAR 파일 확인 및 이동
             echo "Checking for JAR files..."
-            ls -la build/libs/
+            ls -la build/libs/ || true
             
             JAR_FILE=$(find build/libs/ -name "*.jar" ! -name "*-plain.jar" | head -1)
-            
             if [ -n "$JAR_FILE" ]; then
               echo "Found JAR file: $JAR_FILE"
               mv "$JAR_FILE" ./app.jar
@@ -61,22 +60,10 @@ jobs:
               echo "JAR file not found in build/libs/"
               exit 1
             fi
-            
-            # .env 파일 삭제 (더 이상 사용하지 않음)
-            rm -f .env
-            
-            # GitHub Secrets를 환경변수로 설정
-            export DB_URL="${{ secrets.DB_URL }}"
-            export DB_USERNAME="${{ secrets.DB_USERNAME }}"
-            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
-            export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
-            export OPENAI_MODEL="${{ secrets.OPENAI_MODEL }}"
-            export KASI_API_KEY="${{ secrets.KASI_API_KEY }}"
-            export CORS_ALLOWED_ORIGINS="${{ secrets.CORS_ALLOWED_ORIGINS }}"
-            
-            # Docker Compose로 재시작
+
+            echo "Restarting Docker Compose with environment variables..."
             docker-compose down
             docker-compose up -d --build
-            
-            # 컨테이너 상태 확인
+
+            echo "Docker container status:"
             docker ps
