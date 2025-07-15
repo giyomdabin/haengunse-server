@@ -3,9 +3,7 @@ spring:
         name: haengunse-server
 
     config:
-        import:
-            - optional:application-dev.yml
-            - swagger-config.yml
+        import: swagger-config.yml
 
     datasource:
         driver-class-name: com.mysql.cj.jdbc.Driver
