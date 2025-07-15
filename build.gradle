@@ -13,6 +13,14 @@ java {
     }
 }
 
+bootJar {
+    archiveFileName = 'app.jar' // 실행 가능한 JAR 이름 고정
+}
+
+tasks.named('jar') {
+    enabled = false // plain JAR 생성 방지
+}
+
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
