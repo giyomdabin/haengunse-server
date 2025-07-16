@@ -45,9 +45,17 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: DB_URL,DB_USERNAME,DB_PASSWORD,OPENAI_API_KEY,OPENAI_MODEL,KASI_API_KEY,CORS_ALLOWED_ORIGINS
+          envs: OPENAI_API_KEY,OPENAI_MODEL,KASI_API_KEY,CORS_ALLOWED_ORIGINS
           script: |
             cd /home/ubuntu/haengunse-server
+            
+            # .env 파일 생성
+            cat > .env <<EOF
+            OPENAI_API_KEY=$OPENAI_API_KEY
+            OPENAI_MODEL=$OPENAI_MODEL
+            KASI_API_KEY=$KASI_API_KEY
+            CORS_ALLOWED_ORIGINS=$CORS_ALLOWED_ORIGINS
+            EOF
             
             echo "Checking for JAR files..."
             ls -la build/libs/ || true
@@ -60,10 +68,8 @@ jobs:
               echo "JAR file not found in build/libs/"
               exit 1
             fi
-
-            echo "Restarting Docker Compose with environment variables..."
+            echo "Restarting Docker Compose..."
             docker-compose down
             docker-compose up -d --build
-
             echo "Docker container status:"
             docker ps
