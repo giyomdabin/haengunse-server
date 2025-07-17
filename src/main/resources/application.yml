@@ -5,12 +5,12 @@ spring:
     config:
         import: swagger-config.yml
 
-        ai:
-            openai:
-                api-key: ${OPENAI_API_KEY}
-                chat:
-                    options:
-                        model: ${OPENAI_MODEL}
+    ai:
+        openai:
+            api-key: ${OPENAI_API_KEY}
+            chat:
+                options:
+                    model: ${OPENAI_MODEL}
 
 kasi:
     api-key: ${KASI_API_KEY}
