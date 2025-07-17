@@ -45,18 +45,22 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: OPENAI_API_KEY,OPENAI_MODEL,KASI_API_KEY,CORS_ALLOWED_ORIGINS
           script: |
             cd /home/ubuntu/haengunse-server
             
-            # .env 파일 생성
+            # GitHub Secrets에서 직접 .env 파일 생성
             cat > .env <<EOF
-            OPENAI_API_KEY=$OPENAI_API_KEY
-            OPENAI_MODEL=$OPENAI_MODEL
-            KASI_API_KEY=$KASI_API_KEY
-            CORS_ALLOWED_ORIGINS=$CORS_ALLOWED_ORIGINS
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            OPENAI_MODEL=${{ secrets.OPENAI_MODEL }}
+            KASI_API_KEY=${{ secrets.KASI_API_KEY }}
+            CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
             EOF
             
+            # 디버깅: .env 파일 생성 확인 (민감정보 제외)
+            echo "Generated .env file (values masked):"
+            cat .env | sed 's/=.*/=***/'
+            
+            # JAR 파일 처리
             echo "Checking for JAR files..."
             ls -la build/libs/ || true
             
@@ -68,8 +72,16 @@ jobs:
               echo "JAR file not found in build/libs/"
               exit 1
             fi
+            
+            # Docker Compose 재시작
             echo "Restarting Docker Compose..."
             docker-compose down
             docker-compose up -d --build
+            
+            # 컨테이너 상태 확인
             echo "Docker container status:"
             docker ps
+            
+            # 환경변수 로드 확인 (컨테이너 내부)
+            echo "Checking environment variables in container:"
+            docker exec haengunse-app env | grep -E "(OPENAI|KASI|CORS)" || echo "Environment variables not found in container"
