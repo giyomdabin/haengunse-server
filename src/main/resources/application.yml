@@ -3,7 +3,7 @@ spring:
         name: haengunse-server
 
     config:
-        import: swagger-config.yml, application-dev.yml
+        import: swagger-config.yml
 
     ai:
         openai:
