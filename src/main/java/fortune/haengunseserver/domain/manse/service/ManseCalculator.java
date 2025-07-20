@@ -64,7 +64,7 @@ public class ManseCalculator {
                 ? getDayGanZhiWithoutTime(solDate) : getDayGanZhi(solDate);
 
         String hourGanZhi = birthTime.equals("모름")
-                ? "출생 시각 미확인" : getHourGanZhi(solDate, birthTime);
+                ? "모름 모름" : getHourGanZhi(solDate, birthTime);
 
 
         String manseInfo = String.format(
