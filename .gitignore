@@ -7,9 +7,9 @@ build/
 application-dev.yml
 .env
 
-# CSV 파일 무시
-src/main/resources/data/
-
+# json 파일 무시
+src/main/resources/data/age_fortune
+src/main/resources/data/star_fortune
 
 ### STS ###
 .apt_generated
