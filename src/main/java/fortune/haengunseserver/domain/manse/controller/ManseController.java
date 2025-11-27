@@ -11,11 +11,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @RestController
@@ -32,8 +32,7 @@ public class ManseController {
     )
     @ApiErrorCodeExamples({ErrorCode.KASI_ERROR, ErrorCode.INVALID_DATE_FORMAT, ErrorCode.XML_PARSE_ERROR})
     @PostMapping("/calculate")
-    public ResponseEntity<ManseResponse> calculateManse(@RequestBody @Valid ManseRequest request) {
-        ManseResponse manseInfo = manseCalculator.calculateManse(request);
-        return ResponseEntity.ok(manseInfo);
+    public Mono<ManseResponse> calculateManse(@RequestBody @Valid ManseRequest request) {
+        return manseCalculator.calculateManse(request);
     }
 }

@@ -8,10 +8,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.AllArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @RestController
@@ -27,9 +27,8 @@ public class MessageController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = MessageResponseDto.class))
     )
     @GetMapping("/random")
-    public ResponseEntity<MessageResponseDto> getRandomQuestion() {
-        MessageResponseDto randomQuestion = messageService.getRandomQuestion();
-        return ResponseEntity.ok(randomQuestion);
+    public Mono<MessageResponseDto> getRandomQuestion() {
+        return Mono.fromSupplier(messageService::getRandomQuestion);
     }
 
     @Operation(summary = "포춘쿠키 뽑기")
@@ -39,9 +38,8 @@ public class MessageController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = MessageResponseDto.class))
     )
     @GetMapping("/cookie")
-    public ResponseEntity<MessageResponseDto> getFortuneCookie() {
-        MessageResponseDto fortuneCookie = messageService.getFortuneCookie();
-        return ResponseEntity.ok(fortuneCookie);
+    public Mono<MessageResponseDto> getFortuneCookie() {
+        return Mono.fromSupplier(messageService::getFortuneCookie);
     }
 
     @Operation(summary = "행운의 아이템 뽑기")
@@ -51,8 +49,7 @@ public class MessageController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ItemResponseDto.class))
     )
     @GetMapping("/item")
-    public ResponseEntity<ItemResponseDto> getLuckyItem() {
-        ItemResponseDto luckyItem = messageService.getLuckyItem();
-        return ResponseEntity.ok(luckyItem);
+    public Mono<ItemResponseDto> getLuckyItem() {
+        return Mono.fromSupplier(messageService::getLuckyItem);
     }
 }

@@ -2,14 +2,13 @@ package fortune.haengunseserver.domain.fortune.today.service.dream;
 
 import fortune.haengunseserver.domain.fortune.today.dto.response.dream.DreamResponse;
 import fortune.haengunseserver.domain.gpt.service.FortuneRequestService;
-import fortune.haengunseserver.domain.gpt.util.ChatResponseParser;
 import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -22,12 +21,16 @@ public class DreamService extends FortuneRequestService<List<String>, DreamRespo
     }
 
     @Override
-    public Prompt generatePrompt(List<String> questions) {
-
+    public Mono<DreamResponse> getFortune(List<String> questions) {
+        // 입력 검증
         if (questions.size() > 3) {
-            throw new CustomException(ErrorCode.TOO_MANY_QUESTIONS);
+            return Mono.error(new CustomException(ErrorCode.TOO_MANY_QUESTIONS));
         }
+        return super.getFortune(questions);
+    }
 
+    @Override
+    public Prompt generatePrompt(List<String> questions) {
         StringBuilder contentBuilder = new StringBuilder();
         contentBuilder.append("다음을 보고 꿈을 해석해주세요:\n\n");
 
@@ -39,7 +42,6 @@ public class DreamService extends FortuneRequestService<List<String>, DreamRespo
             }
             contentBuilder.append(questions.get(i)).append("\n\n");
         }
-
 
         contentBuilder.append("""
         [답변 규칙]
@@ -53,8 +55,12 @@ public class DreamService extends FortuneRequestService<List<String>, DreamRespo
     }
 
     @Override
-    protected DreamResponse processResponse(ChatResponse response) {
-        log.warn(String.valueOf(response));
-        return ChatResponseParser.parse(response, DreamResponse.class);
+    protected DreamResponse parseResponse(String jsonText) {
+        try {
+            return objectMapper.readValue(jsonText, DreamResponse.class);
+        } catch (Exception e) {
+            log.error("JSON 파싱 실패: {}", jsonText, e);
+            throw new CustomException(ErrorCode.PARSE_ERROR);
+        }
     }
 }

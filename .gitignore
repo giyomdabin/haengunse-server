@@ -6,6 +6,7 @@ build/
 !**/src/test/**/build/
 application-dev.yml
 .env
+.CLAUDE.md
 
 # json 파일 무시
 src/main/resources/data/age_fortune

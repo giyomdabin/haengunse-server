@@ -5,59 +5,70 @@ import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 @Slf4j
 public abstract class FortuneRequestService<T, R> implements FortuneService<T, R> {
 
-    protected final OpenAiChatModel chatModel; // Spring AI GPT 모델
+    protected final OpenAiChatModel chatModel;
+    protected final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public R getFortune(T input) {
+    public Mono<R> getFortune(T input) {
         Prompt prompt = generatePrompt(input);
 
-        try {
-            ChatResponse response = chatModel.call(prompt);
-            return processResponse(response);
-        } catch (CustomException e) {
-            throw e;
-        } catch (Exception e) {
-            throw mapToGptException(e);
-        }
+        return streamGptResponse(prompt)
+                .map(this::parseResponse)
+                .onErrorMap(e -> {
+                    if (e instanceof CustomException) {
+                        return e;
+                    }
+                    return mapToGptException(e);
+                });
     }
 
-    // GPT API 응답을 가공하여 반환합니다.
-    protected abstract R processResponse(ChatResponse response);
-
-    protected CustomException mapToGptException(Exception e) {
-        String errorType = getErrorType(e.getMessage());
-
-        ErrorCode errorCode = switch (errorType) {
-            case "rate_limit_error" -> ErrorCode.GPT_OVERLOADED;
-            default                 -> ErrorCode.GPT_ERROR;
-        };
-
-        return new CustomException(errorCode);
+    /**
+     * GPT 스트리밍 호출 후 전체 응답을 문자열로 합침
+     */
+    protected Mono<String> streamGptResponse(Prompt prompt) {
+        return Flux.from(chatModel.stream(prompt))
+                .map(response -> {
+                    if (response.getResult() != null &&
+                        response.getResult().getOutput() != null &&
+                        response.getResult().getOutput().getText() != null) {
+                        return response.getResult().getOutput().getText();
+                    }
+                    return "";
+                })
+                .reduce("", String::concat)
+                .map(this::cleanJsonResponse);
     }
 
-    protected String getErrorType(String responseBody) {
-        try {
-            // 메시지 앞에 붙은 HTTP 상태 코드 제거
-            int braceIndex = responseBody.indexOf("{");
-            String jsonPart = braceIndex >= 0 ? responseBody.substring(braceIndex) : responseBody;
+    /**
+     * JSON 응답에서 마크다운 코드 블록 제거
+     */
+    protected String cleanJsonResponse(String raw) {
+        return raw.replace("```json", "").replace("```", "").trim();
+    }
 
-            return new ObjectMapper()
-                    .readTree(jsonPart)
-                    .path("error")
-                    .path("type")
-                    .asText("unknown");
+    /**
+     * JSON 문자열을 응답 객체로 파싱
+     */
+    protected abstract R parseResponse(String jsonText);
 
-        } catch (Exception e) {
-            return "unknown";
+    /**
+     * 예외를 GPT 관련 CustomException으로 변환
+     */
+    protected CustomException mapToGptException(Throwable e) {
+        String message = e.getMessage();
+        if (message != null && message.contains("rate_limit")) {
+            return new CustomException(ErrorCode.GPT_OVERLOADED);
         }
+        log.error("GPT 호출 오류: {}", message, e);
+        return new CustomException(ErrorCode.GPT_ERROR);
     }
 }
-

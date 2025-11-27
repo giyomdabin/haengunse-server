@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -28,12 +29,12 @@ import java.util.List;
 @RequestMapping("/api/fortune/today")
 public class TodayFortuneController {
 
-    private final TodaySajuService todayLuckyService;
+    private final TodaySajuService todaySajuService;
     private final StarFortuneStore starFortuneStore;
     private final AgeFortuneStore ageFortuneStore;
     private final DreamService dreamService;
 
-    @Operation( summary = "오늘의 운세 조회", description = "사용자의 사주 정보를 기반으로 오늘의 운세를 반환")
+    @Operation(summary = "오늘의 운세 조회", description = "사용자의 사주 정보를 기반으로 오늘의 운세를 반환")
     @ApiResponse(
             responseCode = "200",
             description = "운세 데이터 정상 반환",
@@ -41,9 +42,8 @@ public class TodayFortuneController {
     )
     @ApiErrorCodeExamples({ErrorCode.GPT_ERROR, ErrorCode.GPT_OVERLOADED, ErrorCode.PARSE_ERROR, ErrorCode.INVALID_MANSE_FORMAT})
     @PostMapping("/saju")
-    public ResponseEntity<TodaySajuResponse> getTodaySaju(@RequestBody SajuRequest request) {
-        TodaySajuResponse response = todayLuckyService.getFortune(request);
-        return ResponseEntity.ok(response);
+    public Mono<TodaySajuResponse> getTodaySaju(@RequestBody SajuRequest request) {
+        return todaySajuService.getFortune(request);
     }
 
     @Operation(summary = "오늘의 별자리 운세 조회")
@@ -57,33 +57,32 @@ public class TodayFortuneController {
     )
     @ApiErrorCodeExample(ErrorCode.SERVER_ERROR)
     @GetMapping("/star")
-    public ResponseEntity<List<StarResponseDto>> getStarFortune() {
+    public Mono<ResponseEntity<List<StarResponseDto>>> getStarFortune() {
         List<StarResponseDto> fortunes = starFortuneStore.get();
 
         if (fortunes == null || fortunes.isEmpty()) {
-            return ResponseEntity.noContent().build(); // 204 No Content
+            return Mono.just(ResponseEntity.noContent().build());
         }
 
-        return ResponseEntity.ok(fortunes);
+        return Mono.just(ResponseEntity.ok(fortunes));
     }
 
     @Operation(summary = "오늘의 띠 운세 조회")
     @ApiResponse(
             responseCode = "200",
             description = "띠 운세 데이터 정상 반환",
-            content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = AgeResponseDto.class))
-            )
+            content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = AgeResponseDto.class)))
     )
     @ApiErrorCodeExample(ErrorCode.SERVER_ERROR)
     @GetMapping("/age")
-    public ResponseEntity<List<AgeResponseDto>> getAgeFortune() {
+    public Mono<ResponseEntity<List<AgeResponseDto>>> getAgeFortune() {
         List<AgeResponseDto> fortunes = ageFortuneStore.get();
 
         if (fortunes == null || fortunes.isEmpty()) {
-            return ResponseEntity.noContent().build(); // 204 No Content
+            return Mono.just(ResponseEntity.noContent().build());
         }
 
-        return ResponseEntity.ok(fortunes);
+        return Mono.just(ResponseEntity.ok(fortunes));
     }
 
     @Operation(summary = "꿈 해몽")
@@ -94,8 +93,7 @@ public class TodayFortuneController {
     )
     @ApiErrorCodeExamples({ErrorCode.GPT_ERROR, ErrorCode.GPT_OVERLOADED, ErrorCode.PARSE_ERROR, ErrorCode.TOO_MANY_QUESTIONS})
     @PostMapping("/dream")
-    public ResponseEntity<DreamResponse> getDreamLucky(@RequestBody List<String> request) {
-        DreamResponse response = dreamService.getFortune(request);
-        return ResponseEntity.ok(response);
+    public Mono<DreamResponse> getDreamLucky(@RequestBody List<String> request) {
+        return dreamService.getFortune(request);
     }
 }

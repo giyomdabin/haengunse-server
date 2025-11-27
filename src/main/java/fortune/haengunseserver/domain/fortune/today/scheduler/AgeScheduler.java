@@ -27,11 +27,10 @@ import java.util.concurrent.ThreadLocalRandom;
 public class AgeScheduler {
 
     private final AgeFortuneService ageFortuneService;
-    private final AgeFortuneStore   ageFortuneStore;
-    private final ObjectMapper mapper;               // 스프링 기본 빈 주입
+    private final AgeFortuneStore ageFortuneStore;
+    private final ObjectMapper mapper;
 
     private List<List<AgeResponseDto>> dummyVariants = null;
-
 
     @Async
     @Scheduled(cron = "0 59 23 * * *", zone = "Asia/Seoul")
@@ -44,9 +43,10 @@ public class AgeScheduler {
         List<AgeResponseDto> fortunes;
 
         try {
-            fortunes = ageFortuneService.getFortune(tomorrow);   // GPT 호출
+            // 스케줄러는 백그라운드 작업이므로 block() 사용 허용
+            fortunes = ageFortuneService.getFortune(tomorrow).block();
         } catch (Exception e) {
-            fortunes = randomDummy();                            // 실패 → 더미
+            fortunes = randomDummy();
             log.warn("더미 운세 적용: {}", fortunes);
         }
 
@@ -63,7 +63,7 @@ public class AgeScheduler {
 
             } catch (IOException e) {
                 log.error("더미 로딩 실패", e);
-                return List.of(); // fallback 처리
+                return List.of();
             }
         }
 

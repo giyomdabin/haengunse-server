@@ -1,41 +1,64 @@
 package fortune.haengunseserver.global.exception.handler;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import fortune.haengunseserver.global.response.ErrorResponse;
-import io.swagger.v3.oas.annotations.Hidden;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
+import org.springframework.core.annotation.Order;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
-@Hidden
-@RestControllerAdvice
-public class GlobalExceptionHandler {
+@Component
+@Order(-2) // 기본 에러 핸들러보다 먼저 실행
+@RequiredArgsConstructor
+@Slf4j
+public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
 
-    @ExceptionHandler(CustomException.class)
-    public ResponseEntity<ErrorResponse> handleCustomException(CustomException ex) {
-        ErrorCode errorCode = ex.getErrorCode();
+    private final ObjectMapper objectMapper;
 
-        ErrorResponse errorResponse =
-                new ErrorResponse(errorCode.getHttpStatus().value(), errorCode.getMessage());
+    @Override
+    public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+        ErrorResponse errorResponse;
+        HttpStatus status;
 
-        return ResponseEntity
-                .status(errorCode.getHttpStatus())
-                .body(errorResponse);
-    }
+        if (ex instanceof CustomException customException) {
+            ErrorCode errorCode = customException.getErrorCode();
+            status = errorCode.getHttpStatus();
+            errorResponse = new ErrorResponse(status.value(), errorCode.getMessage());
+        } else if (ex instanceof WebExchangeBindException bindException) {
+            // Validation 실패
+            status = HttpStatus.BAD_REQUEST;
+            String errorMessage = bindException.getFieldErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .findFirst()
+                    .orElse("입력값이 올바르지 않습니다.");
+            errorResponse = new ErrorResponse(status.value(), errorMessage);
+        } else {
+            // 기타 예외
+            log.error("Unhandled exception: ", ex);
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+            errorResponse = new ErrorResponse(status.value(), "서버 오류가 발생했습니다.");
+        }
 
-    // 필드 validation 실패
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
-        String errorMessage = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> error.getDefaultMessage())
-                .findFirst()
-                .orElse("입력값이 올바르지 않습니다.");
+        exchange.getResponse().setStatusCode(status);
+        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage));
+        try {
+            byte[] bytes = objectMapper.writeValueAsBytes(errorResponse);
+            DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
+            return exchange.getResponse().writeWith(Mono.just(buffer));
+        } catch (JsonProcessingException e) {
+            log.error("Error writing response: ", e);
+            return Mono.error(e);
+        }
     }
 }

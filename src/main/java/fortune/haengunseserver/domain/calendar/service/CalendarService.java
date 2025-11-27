@@ -19,9 +19,11 @@ public class CalendarService {
     @Value("${kasi.api-key}")
     private String serviceKey;
 
+    /**
+     * 음력을 양력으로 변환 (리액티브)
+     */
     public Mono<LunToSolResponse> convertToSolar(String lunYear, String lunMonth, String lunDay) {
-
-        String xml = kasiClient.get()
+        return kasiClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/getSolCalInfo")
                         .queryParam("lunYear", lunYear)
                         .queryParam("lunMonth", lunMonth)
@@ -30,24 +32,25 @@ public class CalendarService {
                         .build())
                 .retrieve()
                 .bodyToMono(String.class)
-                .block();
-
-        return parseResponse(xml);
+                .flatMap(this::parseResponse)
+                .onErrorMap(e -> {
+                    if (e instanceof CustomException) {
+                        return e;
+                    }
+                    return new CustomException(ErrorCode.KASI_ERROR);
+                });
     }
 
     private Mono<LunToSolResponse> parseResponse(String xml) {
         try {
-            // <item> 태그의 시작과 끝 위치 추출
             int start = xml.indexOf("<item>");
             int end = xml.indexOf("</item>");
             if (start == -1 || end == -1) {
                 return Mono.error(new CustomException(ErrorCode.XML_PARSE_ERROR));
             }
 
-            // <item> 태그만 추출
             String itemXml = xml.substring(start, end + "</item>".length());
 
-            // XML → DTO 매핑
             XmlMapper xmlMapper = new XmlMapper();
             LunToSolResponse result = xmlMapper.readValue(itemXml, LunToSolResponse.class);
 

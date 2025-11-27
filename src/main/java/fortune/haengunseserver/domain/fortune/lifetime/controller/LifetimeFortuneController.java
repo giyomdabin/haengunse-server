@@ -10,11 +10,11 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.AllArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @RestController
@@ -23,7 +23,7 @@ public class LifetimeFortuneController {
 
     private final LifetimeFortuneService lifetimeFortuneService;
 
-    @Operation( summary = "평생운세 조회")
+    @Operation(summary = "평생운세 조회")
     @ApiResponse(
             responseCode = "200",
             description = "평생운세 정상 반환",
@@ -31,8 +31,7 @@ public class LifetimeFortuneController {
     )
     @ApiErrorCodeExamples({ErrorCode.GPT_ERROR, ErrorCode.GPT_OVERLOADED, ErrorCode.PARSE_ERROR, ErrorCode.INVALID_MANSE_FORMAT})
     @PostMapping
-    public ResponseEntity<LifetimeSajuResponse> getLifetimeFortune(@RequestBody SajuRequest request) {
-        LifetimeSajuResponse fortune = lifetimeFortuneService.getFortune(request);
-        return ResponseEntity.ok(fortune);
+    public Mono<LifetimeSajuResponse> getLifetimeFortune(@RequestBody SajuRequest request) {
+        return lifetimeFortuneService.getFortune(request);
     }
 }

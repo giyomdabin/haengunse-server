@@ -35,7 +35,8 @@ repositories {
 dependencies {
     // implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
+    // WebFlux 전환으로 web 제거
+    // implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'
     // runtimeOnly 'com.mysql:mysql-connector-j'
     annotationProcessor 'org.projectlombok:lombok'
@@ -44,8 +45,8 @@ dependencies {
     testImplementation 'org.mockito:mockito-core'
     testImplementation 'org.mockito:mockito-junit-jupiter'
 
-    //swagger
-    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0"
+    //swagger (webflux용)
+    implementation "org.springdoc:springdoc-openapi-starter-webflux-ui:2.6.0"
 
     // WebFux
     implementation 'org.springframework.boot:spring-boot-starter-webflux'

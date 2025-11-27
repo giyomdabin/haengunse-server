@@ -27,7 +27,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class StarScheduler {
 
     private final StarFortuneService starFortuneService;
-    private final StarFortuneStore starFortuneStore; // 내부 저장소
+    private final StarFortuneStore starFortuneStore;
     private final ObjectMapper mapper;
 
     private List<List<StarResponseDto>> dummyVariants = null;
@@ -43,9 +43,10 @@ public class StarScheduler {
         List<StarResponseDto> fortunes;
 
         try {
-            fortunes = starFortuneService.getFortune(tomorrow);   // GPT 호출
+            // 스케줄러는 백그라운드 작업이므로 block() 사용 허용
+            fortunes = starFortuneService.getFortune(tomorrow).block();
         } catch (Exception e) {
-            fortunes = randomDummy();                            // 실패 → 더미
+            fortunes = randomDummy();
             log.warn("더미 운세 적용: {}", fortunes);
         }
 
@@ -62,7 +63,7 @@ public class StarScheduler {
 
             } catch (IOException e) {
                 log.error("더미 로딩 실패", e);
-                return List.of(); // fallback 처리
+                return List.of();
             }
         }
 
