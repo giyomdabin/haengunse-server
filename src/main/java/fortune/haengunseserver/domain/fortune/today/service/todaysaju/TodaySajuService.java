@@ -185,55 +185,6 @@ public class TodaySajuService {
     }
 
     /**
-     * 세부운 프롬프트 생성 (deprecated - 사용하지 않음)
-     */
-    @Deprecated
-    private Prompt buildDetailPrompt(String manseInfo, String gender, String todayDate) {
-        String content = String.format("""
-            당신은 20년 경력의 사주 카페를 운영하는 전문 역술가입니다.
-            손님에게 오늘의 운세를 친절하고 이해하기 쉽게 설명해 주세요.
-            말투는 존댓말을 사용하고, 사주 카페에서 직접 말해주는 느낌으로 작성하세요.
-                            
-            [사주 정보]
-            - 성별: %s
-            - 만세력: %s
-            - 오늘 날짜: %s
-                            
-            [점수 기준 / 5점 만점]
-            - 5.0: 천을귀인·삼합·육합 등 매우 좋은 조합
-            - 4.0~4.5: 기운이 도와주는 날(생, 용신 도움)
-            - 3.0~3.5: 무난한 흐름
-            - 2.0~2.5: 마찰·부담 주의(극, 형)
-            - 1.0~1.5: 충돌·어긋남(충, 파, 해)
-            - 0.5~1.0: 전반적으로 조심이 필요한 날
-                            
-            [작성 규칙]
-            - 재물운 / 연애운 / 건강운 / 학업운 / 직장운 총 5개
-            - 각 운세는 점수 + 6문장의 설명
-            - 첫 1~2줄: 오늘 운의 흐름 요약
-            - 나머지: 실제 행동에 도움이 되는 조언
-            - 점수가 낮으면 대처법, 높으면 활용법 제시
-            - 모든 운이 다 좋게 나오지는 않게 판단
-                            
-            [출력 형식 — JSON만]
-            {
-              "wealthFortune": {"score": , "description": ""},
-              "loveFortune": {"score": , "description": ""},
-              "healthFortune": {"score": , "description": ""},
-              "studyFortune": {"score": , "description": ""},
-              "careerFortune": {"score": , "description": ""}
-            }
-                            
-            """, gender, manseInfo, todayDate);
-
-        OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setMaxTokens(1400);
-        chatOptions.setTemperature(0.8);
-
-        return new Prompt(content, chatOptions);
-    }
-
-    /**
      * 총운 프롬프트 생성 (세부운 결과 포함)
      */
     private Prompt buildGeneralPrompt(String manseInfo, String gender, String todayDate, DetailFortuneResult detail) {
