@@ -44,6 +44,8 @@ public class TodaySajuService {
         String gender = GenderConverter.toKorean(request.getGender());
         String todayDate = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
 
+        log.info("오늘의 운세 조회 시작 - 만세력: {}", manseInfo);
+
         // 1단계: 5개 세부운을 병렬로 호출
         Mono<FortuneDetail> wealthMono = getWealthFortune(manseInfo, gender, todayDate);
         Mono<FortuneDetail> loveMono = getLoveFortune(manseInfo, gender, todayDate);
@@ -53,6 +55,9 @@ public class TodaySajuService {
 
         // 5개 병렬 호출 후 결과를 합침
         return Mono.zip(wealthMono, loveMono, healthMono, studyMono, careerMono)
+                .elapsed()
+                .doOnNext(tuple -> log.info("세부운 5개 병렬 조회 완료 - 소요시간: {}ms", tuple.getT1()))
+                .map(tuple -> tuple.getT2())
                 .flatMap(tuple -> {
                     DetailFortuneResult detailResult = new DetailFortuneResult(
                             tuple.getT1(), // 재물운
@@ -67,6 +72,9 @@ public class TodaySajuService {
                             .map(json -> parseJson(json, GeneralFortuneResult.class))
                             .map(generalResult -> combineResults(generalResult, detailResult));
                 })
+                .elapsed()
+                .doOnNext(tuple -> log.info("오늘의 운세 전체 조회 완료 - 총 소요시간: {}ms", tuple.getT1()))
+                .map(tuple -> tuple.getT2())
                 .onErrorMap(e -> {
                     if (e instanceof CustomException) {
                         return e;
@@ -77,10 +85,21 @@ public class TodaySajuService {
     }
 
     /**
-     * GPT 스트리밍 호출
+     * GPT 스트리밍 호출 (토큰 사용량 로깅 포함)
      */
     private Mono<String> callGpt(Prompt prompt) {
         return Flux.from(chatModel.stream(prompt))
+                .doOnNext(response -> {
+                    // 토큰 사용량 로깅
+                    if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
+                        var usage = response.getMetadata().getUsage();
+                        log.info("GPT 토큰 사용량 - Prompt: {}, Completion: {}, Total: {}",
+                            usage.getPromptTokens(),
+                            usage.getGenerationTokens(),
+                            usage.getTotalTokens()
+                        );
+                    }
+                })
                 .map(response -> {
                     if (response.getResult() != null &&
                         response.getResult().getOutput() != null &&
