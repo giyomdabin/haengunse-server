@@ -1,4 +1,5 @@
 HELP.md
+PERFORMANCE_IMPROVEMENT.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
