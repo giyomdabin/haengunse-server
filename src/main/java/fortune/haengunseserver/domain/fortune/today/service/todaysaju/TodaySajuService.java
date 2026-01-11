@@ -5,6 +5,7 @@ import fortune.haengunseserver.domain.fortune.common.dto.request.SajuRequest;
 import fortune.haengunseserver.domain.fortune.common.util.GenderConverter;
 import fortune.haengunseserver.domain.fortune.common.util.ManseInfoFormatter;
 import fortune.haengunseserver.domain.fortune.today.dto.response.sajufortune.DetailFortuneResult;
+import fortune.haengunseserver.domain.fortune.today.dto.response.sajufortune.FortuneDetail;
 import fortune.haengunseserver.domain.fortune.today.dto.response.sajufortune.GeneralFortuneResult;
 import fortune.haengunseserver.domain.fortune.today.dto.response.sajufortune.TodaySajuResponse;
 import fortune.haengunseserver.global.exception.CustomException;
@@ -35,7 +36,7 @@ public class TodaySajuService {
 
     /**
      * 오늘의 사주 운세 조회
-     * 1단계: 세부운(재물/연애/건강/학업/직장) GPT 호출
+     * 1단계: 5개 세부운(재물/연애/건강/학업/직장)을 병렬로 GPT 호출
      * 2단계: 세부운 결과를 기반으로 총운 GPT 호출
      */
     public Mono<TodaySajuResponse> getFortune(SajuRequest request) {
@@ -43,15 +44,29 @@ public class TodaySajuService {
         String gender = GenderConverter.toKorean(request.getGender());
         String todayDate = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
 
-        // 1단계: 세부운 먼저 조회
-        return callGpt(buildDetailPrompt(manseInfo, gender, todayDate))
-                .map(json -> parseJson(json, DetailFortuneResult.class))
-                // 2단계: 세부운 결과로 총운 생성
-                .flatMap(detailResult ->
-                    callGpt(buildGeneralPrompt(manseInfo, gender, todayDate, detailResult))
-                        .map(json -> parseJson(json, GeneralFortuneResult.class))
-                        .map(generalResult -> combineResults(generalResult, detailResult))
-                )
+        // 1단계: 5개 세부운을 병렬로 호출
+        Mono<FortuneDetail> wealthMono = getWealthFortune(manseInfo, gender, todayDate);
+        Mono<FortuneDetail> loveMono = getLoveFortune(manseInfo, gender, todayDate);
+        Mono<FortuneDetail> healthMono = getHealthFortune(manseInfo, gender, todayDate);
+        Mono<FortuneDetail> studyMono = getStudyFortune(manseInfo, gender, todayDate);
+        Mono<FortuneDetail> careerMono = getCareerFortune(manseInfo, gender, todayDate);
+
+        // 5개 병렬 호출 후 결과를 합침
+        return Mono.zip(wealthMono, loveMono, healthMono, studyMono, careerMono)
+                .flatMap(tuple -> {
+                    DetailFortuneResult detailResult = new DetailFortuneResult(
+                            tuple.getT1(), // 재물운
+                            tuple.getT2(), // 연애운
+                            tuple.getT3(), // 건강운
+                            tuple.getT4(), // 학업운
+                            tuple.getT5()  // 직장운
+                    );
+
+                    // 2단계: 세부운 결과로 총운 생성
+                    return callGpt(buildGeneralPrompt(manseInfo, gender, todayDate, detailResult))
+                            .map(json -> parseJson(json, GeneralFortuneResult.class))
+                            .map(generalResult -> combineResults(generalResult, detailResult));
+                })
                 .onErrorMap(e -> {
                     if (e instanceof CustomException) {
                         return e;
@@ -79,55 +94,140 @@ public class TodaySajuService {
     }
 
     /**
-     * 세부운 프롬프트 생성
+     * 재물운 조회
      */
-    private Prompt buildDetailPrompt(String manseInfo, String gender, String todayDate) {
+    private Mono<FortuneDetail> getWealthFortune(String manseInfo, String gender, String todayDate) {
+        return callGpt(buildFortunePrompt("재물운", manseInfo, gender, todayDate))
+                .map(json -> parseFortuneDetail(json));
+    }
+
+    /**
+     * 연애운 조회
+     */
+    private Mono<FortuneDetail> getLoveFortune(String manseInfo, String gender, String todayDate) {
+        return callGpt(buildFortunePrompt("연애운", manseInfo, gender, todayDate))
+                .map(json -> parseFortuneDetail(json));
+    }
+
+    /**
+     * 건강운 조회
+     */
+    private Mono<FortuneDetail> getHealthFortune(String manseInfo, String gender, String todayDate) {
+        return callGpt(buildFortunePrompt("건강운", manseInfo, gender, todayDate))
+                .map(json -> parseFortuneDetail(json));
+    }
+
+    /**
+     * 학업운 조회
+     */
+    private Mono<FortuneDetail> getStudyFortune(String manseInfo, String gender, String todayDate) {
+        return callGpt(buildFortunePrompt("학업운", manseInfo, gender, todayDate))
+                .map(json -> parseFortuneDetail(json));
+    }
+
+    /**
+     * 직장운 조회
+     */
+    private Mono<FortuneDetail> getCareerFortune(String manseInfo, String gender, String todayDate) {
+        return callGpt(buildFortunePrompt("직장운", manseInfo, gender, todayDate))
+                .map(json -> parseFortuneDetail(json));
+    }
+
+    /**
+     * 개별 운세 프롬프트 생성 (재물/연애/건강/학업/직장)
+     */
+    private Prompt buildFortunePrompt(String fortuneType, String manseInfo, String gender, String todayDate) {
         String content = String.format("""
-            당신은 엄격하고 정확한 사주명리학자입니다.
-            다음 사주 정보와 오늘의 일진을 분석하여 세부 운세를 판단해주세요.
+            당신은 20년 경력의 사주 카페를 운영하는 전문 역술가입니다.
+            손님에게 오늘의 %s을 친절하고 이해하기 쉽게 설명해 주세요.
+            말투는 존댓말을 사용하고, 사주 카페에서 직접 말해주는 느낌으로 작성하세요.
 
             [사주 정보]
-            성별: %s
-            만세력:
-            %s
-            오늘 날짜: %s
+            - 성별: %s
+            - 만세력: %s
+            - 오늘 날짜: %s
 
-            [채점 기준 - 반드시 아래 기준에 따라 점수를 부여할 것]
-
-            ★ 점수별 기준 (5점 만점):
-            - 5.0점: 천을귀인, 삼합, 육합 등 대길한 조합이 있을 때
-            - 4.0~4.5점: 생(生)의 관계, 용신이 힘을 받을 때
-            - 3.0~3.5점: 특별한 길흉이 없는 평범한 날
-            - 2.0~2.5점: 극(剋)의 관계, 형(刑)이 있을 때
-            - 1.0~1.5점: 충(沖), 파(破), 해(害)가 있을 때
-            - 0.5~1.0점: 복합적인 흉살이 겹칠 때
-
-            ★ 운세별 주요 판단 요소:
-            - 재물운: 재성(편재/정재)과 일진의 관계, 식상생재 여부
-            - 연애운: 관성(편관/정관), 인성과의 관계, 도화살/홍염살 여부
-            - 건강운: 일간의 강약, 비겁 및 인성의 힘, 병부(病符) 여부
-            - 학업운: 인성(편인/정인)의 상태, 문창귀인 여부
-            - 직장운: 관성의 상태, 역마살, 천을귀인 여부
+            [점수 기준 / 5점 만점]
+            - 5.0: 천을귀인·삼합·육합 등 매우 좋은 조합
+            - 4.0~4.5: 기운이 도와주는 날(생, 용신 도움)
+            - 3.0~3.5: 무난한 흐름
+            - 2.0~2.5: 마찰·부담 주의(극, 형)
+            - 1.0~1.5: 충돌·어긋남(충, 파, 해)
+            - 0.5~1.0: 전반적으로 조심이 필요한 날
 
             [작성 규칙]
-            - 각 운세별로 3~4줄로 작성
-            - 존댓말로 답변
-            - 사주 용어(충, 합, 형, 생, 극 등)를 사용하되 쉽게 풀어서 설명
-            - 점수가 낮으면 주의사항과 조언을 구체적으로 제시
-            - 모든 운세가 좋을 수 없음. 사주에 따라 냉정하게 평가할 것
+            - %s에 대해서만 작성
+            - 점수 + 6문장의 설명
+            - 첫 1~2줄: 오늘 운의 흐름 요약
+            - 나머지: 실제 행동에 도움이 되는 조언
+            - 점수가 낮으면 대처법, 높으면 활용법 제시
 
-            응답은 아래 JSON 형식으로 출력해주세요 (설명 없이 JSON만 출력)
+            [출력 형식 — JSON만]
             {
-                "wealthFortune": {"score": , "description": "..."},
-                "loveFortune": {"score": , "description": "..."},
-                "healthFortune": {"score": , "description": "..."},
-                "studyFortune": {"score": , "description": "..."},
-                "careerFortune": {"score": , "description": "..."}
+              "score": ,
+              "description": ""
             }
+
+            """, fortuneType, gender, manseInfo, todayDate, fortuneType);
+
+        OpenAiChatOptions chatOptions = new OpenAiChatOptions();
+        chatOptions.setMaxTokens(300);
+        chatOptions.setTemperature(0.7);
+
+        return new Prompt(content, chatOptions);
+    }
+
+    /**
+     * 개별 운세 JSON 파싱
+     */
+    private FortuneDetail parseFortuneDetail(String json) {
+        return parseJson(json, FortuneDetail.class);
+    }
+
+    /**
+     * 세부운 프롬프트 생성 (deprecated - 사용하지 않음)
+     */
+    @Deprecated
+    private Prompt buildDetailPrompt(String manseInfo, String gender, String todayDate) {
+        String content = String.format("""
+            당신은 20년 경력의 사주 카페를 운영하는 전문 역술가입니다.
+            손님에게 오늘의 운세를 친절하고 이해하기 쉽게 설명해 주세요.
+            말투는 존댓말을 사용하고, 사주 카페에서 직접 말해주는 느낌으로 작성하세요.
+                            
+            [사주 정보]
+            - 성별: %s
+            - 만세력: %s
+            - 오늘 날짜: %s
+                            
+            [점수 기준 / 5점 만점]
+            - 5.0: 천을귀인·삼합·육합 등 매우 좋은 조합
+            - 4.0~4.5: 기운이 도와주는 날(생, 용신 도움)
+            - 3.0~3.5: 무난한 흐름
+            - 2.0~2.5: 마찰·부담 주의(극, 형)
+            - 1.0~1.5: 충돌·어긋남(충, 파, 해)
+            - 0.5~1.0: 전반적으로 조심이 필요한 날
+                            
+            [작성 규칙]
+            - 재물운 / 연애운 / 건강운 / 학업운 / 직장운 총 5개
+            - 각 운세는 점수 + 6문장의 설명
+            - 첫 1~2줄: 오늘 운의 흐름 요약
+            - 나머지: 실제 행동에 도움이 되는 조언
+            - 점수가 낮으면 대처법, 높으면 활용법 제시
+            - 모든 운이 다 좋게 나오지는 않게 판단
+                            
+            [출력 형식 — JSON만]
+            {
+              "wealthFortune": {"score": , "description": ""},
+              "loveFortune": {"score": , "description": ""},
+              "healthFortune": {"score": , "description": ""},
+              "studyFortune": {"score": , "description": ""},
+              "careerFortune": {"score": , "description": ""}
+            }
+                            
             """, gender, manseInfo, todayDate);
 
         OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setMaxTokens(800);
+        chatOptions.setMaxTokens(1400);
         chatOptions.setTemperature(0.8);
 
         return new Prompt(content, chatOptions);
@@ -161,41 +261,44 @@ public class TodaySajuService {
         );
 
         String content = String.format("""
-            당신은 엄격하고 정확한 사주명리학자입니다.
-            세부 운세 결과를 종합하여 오늘의 총운을 판단해주세요.
+            당신은 20년 경력의 사주 카페를 운영하는 전문 역술가입니다.
+            손님에게 오늘의 총운을 친절하고 이해하기 쉽게 설명해 주세요.
+            말투는 존댓말을 사용하고, 사주 카페에서 직접 말해주는 느낌으로 작성하세요.
 
             [사주 정보]
-            성별: %s
-            만세력:
-            %s
-            오늘 날짜: %s
+            - 성별: %s
+            - 만세력: %s
+            - 오늘 날짜: %s
 
             [세부 운세 결과]
             %s
 
-            [총점 채점 기준]
-            - 총점은 세부 운세 평균을 기반으로 하되, 사주와 일진의 전체적인 조화를 고려
-            - 충(沖)이나 형(刑)이 여러 곳에서 발생하면 감점
-            - 천을귀인, 삼합 등 길신이 있으면 가점
-            - 점수 분포: 20~30점(매우 나쁨), 40~50점(나쁨), 50~60점(보통), 70~80점(좋음), 85점 이상(매우 좋음)
+            [총점 기준 / 100점 만점]
+            - 85~100점: 천을귀인·삼합·육합 등 매우 좋은 조합
+            - 70~84점: 기운이 도와주는 날(생, 용신 도움)
+            - 50~69점: 무난한 흐름
+            - 40~49점: 마찰·부담 주의(극, 형)
+            - 20~39점: 충돌·어긋남(충, 파, 해)
+            - 0~19점: 전반적으로 조심이 필요한 날
 
             [작성 규칙]
-            - 4줄 이상의 문장으로 작성
-            - 세부 운세 중 특히 주의할 부분과 활용할 부분을 언급
-            - 존댓말로 답변
-            - 낮은 점수의 운세가 있다면 반드시 주의사항 포함
+            - 총운은 6문장으로 작성
+            - 첫 1~2줄: 오늘 전체적인 운의 흐름 요약
+            - 나머지: 세부 운세를 종합하여 실제 행동에 도움이 되는 조언
+            - 점수가 높은 운세는 어떻게 활용할지, 낮은 운세는 어떻게 대처할지 제시
             - dailyMessage는 오늘의 핵심 조언 (25자 이내)
 
-            응답은 아래 JSON 형식으로 출력해주세요 (설명 없이 JSON만 출력)
+            [출력 형식 — JSON만]
             {
-                "totalScore": ,
-                "generalFortune": "...",
-                "dailyMessage": "..."
+              "totalScore": ,
+              "generalFortune": "",
+              "dailyMessage": ""
             }
+
             """, gender, manseInfo, todayDate, detailSummary);
 
         OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setMaxTokens(450);
+        chatOptions.setMaxTokens(700);
         chatOptions.setTemperature(0.8);
 
         return new Prompt(content, chatOptions);
