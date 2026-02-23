@@ -3,11 +3,10 @@ package fortune.haengunseserver.domain.fortune.today.service.starfortune;
 import com.fasterxml.jackson.core.type.TypeReference;
 import fortune.haengunseserver.domain.fortune.today.dto.response.starfortune.StarResponseDto;
 import fortune.haengunseserver.domain.gpt.service.FortuneRequestService;
+import fortune.haengunseserver.domain.gpt.service.MindLogicChatClient;
 import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,13 +15,13 @@ import java.util.List;
 @Slf4j
 public class StarFortuneService extends FortuneRequestService<String, List<StarResponseDto>> {
 
-    public StarFortuneService(OpenAiChatModel chatModel) {
-        super(chatModel);
+    public StarFortuneService(MindLogicChatClient chatClient) {
+        super(chatClient);
     }
 
     @Override
-    public Prompt generatePrompt(String input) {
-        String content = String.format("""
+    public String generatePrompt(String input) {
+        return String.format("""
                         오늘의 12별자리 운세를 봐주세요.
 
                         오늘의 날짜는 다음과 같습니다:
@@ -49,8 +48,6 @@ public class StarFortuneService extends FortuneRequestService<String, List<StarR
                         """,
                 input
         );
-
-        return new Prompt(content);
     }
 
     @Override

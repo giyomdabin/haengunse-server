@@ -5,23 +5,20 @@ import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.openai.OpenAiChatModel;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 @Slf4j
 public abstract class FortuneRequestService<T, R> implements FortuneService<T, R> {
 
-    protected final OpenAiChatModel chatModel;
+    protected final MindLogicChatClient chatClient;
     protected final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public Mono<R> getFortune(T input) {
-        Prompt prompt = generatePrompt(input);
+        String content = generatePrompt(input);
 
-        return streamGptResponse(prompt)
+        return callApi(content)
                 .map(this::parseResponse)
                 .onErrorMap(e -> {
                     if (e instanceof CustomException) {
@@ -31,20 +28,13 @@ public abstract class FortuneRequestService<T, R> implements FortuneService<T, R
                 });
     }
 
-    /**
-     * GPT 스트리밍 호출 후 전체 응답을 문자열로 합침
-     */
-    protected Mono<String> streamGptResponse(Prompt prompt) {
-        return Flux.from(chatModel.stream(prompt))
-                .map(response -> {
-                    if (response.getResult() != null &&
-                        response.getResult().getOutput() != null &&
-                        response.getResult().getOutput().getText() != null) {
-                        return response.getResult().getOutput().getText();
-                    }
-                    return "";
-                })
-                .reduce("", String::concat)
+    protected Mono<String> callApi(String content) {
+        return chatClient.call(content, null, null)
+                .map(this::cleanJsonResponse);
+    }
+
+    protected Mono<String> callApi(String content, Integer maxTokens, Double temperature) {
+        return chatClient.call(content, maxTokens, temperature)
                 .map(this::cleanJsonResponse);
     }
 

@@ -1,0 +1,14 @@
+spring:
+    application:
+        name: haengunse-server
+
+mindlogic:
+    base-url: https://test.example.com
+    api-key: test-key
+    model: test-model
+
+kasi:
+    api-key: test-kasi-key
+
+cors:
+    allowed-origins: http://localhost:3000

@@ -8,15 +8,12 @@ import fortune.haengunseserver.domain.fortune.today.dto.response.sajufortune.Det
 import fortune.haengunseserver.domain.fortune.today.dto.response.sajufortune.FortuneDetail;
 import fortune.haengunseserver.domain.fortune.today.dto.response.sajufortune.GeneralFortuneResult;
 import fortune.haengunseserver.domain.fortune.today.dto.response.sajufortune.TodaySajuResponse;
+import fortune.haengunseserver.domain.gpt.service.MindLogicChatClient;
 import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
@@ -31,7 +28,7 @@ import java.time.format.DateTimeFormatter;
 @Slf4j
 public class TodaySajuService {
 
-    private final OpenAiChatModel chatModel;
+    private final MindLogicChatClient chatClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -68,7 +65,7 @@ public class TodaySajuService {
                     );
 
                     // 2단계: 세부운 결과로 총운 생성
-                    return callGpt(buildGeneralPrompt(manseInfo, gender, todayDate, detailResult))
+                    return callGpt(buildGeneralPrompt(manseInfo, gender, todayDate, detailResult), 700, 0.8)
                             .map(json -> parseJson(json, GeneralFortuneResult.class))
                             .map(generalResult -> combineResults(generalResult, detailResult));
                 })
@@ -85,30 +82,10 @@ public class TodaySajuService {
     }
 
     /**
-     * GPT 스트리밍 호출 (토큰 사용량 로깅 포함)
+     * GPT 호출 (MindLogic API)
      */
-    private Mono<String> callGpt(Prompt prompt) {
-        return Flux.from(chatModel.stream(prompt))
-                .doOnNext(response -> {
-                    // 토큰 사용량 로깅
-                    if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
-                        var usage = response.getMetadata().getUsage();
-                        log.info("GPT 토큰 사용량 - Prompt: {}, Completion: {}, Total: {}",
-                            usage.getPromptTokens(),
-                            usage.getGenerationTokens(),
-                            usage.getTotalTokens()
-                        );
-                    }
-                })
-                .map(response -> {
-                    if (response.getResult() != null &&
-                        response.getResult().getOutput() != null &&
-                        response.getResult().getOutput().getText() != null) {
-                        return response.getResult().getOutput().getText();
-                    }
-                    return "";
-                })
-                .reduce("", String::concat)
+    private Mono<String> callGpt(String content, Integer maxTokens, Double temperature) {
+        return chatClient.call(content, maxTokens, temperature)
                 .map(this::cleanJsonResponse);
     }
 
@@ -116,7 +93,7 @@ public class TodaySajuService {
      * 재물운 조회
      */
     private Mono<FortuneDetail> getWealthFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("재물운", manseInfo, gender, todayDate))
+        return callGpt(buildFortunePrompt("재물운", manseInfo, gender, todayDate), 300, 0.7)
                 .map(json -> parseFortuneDetail(json));
     }
 
@@ -124,7 +101,7 @@ public class TodaySajuService {
      * 연애운 조회
      */
     private Mono<FortuneDetail> getLoveFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("연애운", manseInfo, gender, todayDate))
+        return callGpt(buildFortunePrompt("연애운", manseInfo, gender, todayDate), 300, 0.7)
                 .map(json -> parseFortuneDetail(json));
     }
 
@@ -132,7 +109,7 @@ public class TodaySajuService {
      * 건강운 조회
      */
     private Mono<FortuneDetail> getHealthFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("건강운", manseInfo, gender, todayDate))
+        return callGpt(buildFortunePrompt("건강운", manseInfo, gender, todayDate), 300, 0.7)
                 .map(json -> parseFortuneDetail(json));
     }
 
@@ -140,7 +117,7 @@ public class TodaySajuService {
      * 학업운 조회
      */
     private Mono<FortuneDetail> getStudyFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("학업운", manseInfo, gender, todayDate))
+        return callGpt(buildFortunePrompt("학업운", manseInfo, gender, todayDate), 300, 0.7)
                 .map(json -> parseFortuneDetail(json));
     }
 
@@ -148,15 +125,15 @@ public class TodaySajuService {
      * 직장운 조회
      */
     private Mono<FortuneDetail> getCareerFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("직장운", manseInfo, gender, todayDate))
+        return callGpt(buildFortunePrompt("직장운", manseInfo, gender, todayDate), 300, 0.7)
                 .map(json -> parseFortuneDetail(json));
     }
 
     /**
      * 개별 운세 프롬프트 생성 (재물/연애/건강/학업/직장)
      */
-    private Prompt buildFortunePrompt(String fortuneType, String manseInfo, String gender, String todayDate) {
-        String content = String.format("""
+    private String buildFortunePrompt(String fortuneType, String manseInfo, String gender, String todayDate) {
+        return String.format("""
             당신은 20년 경력의 사주 카페를 운영하는 전문 역술가입니다.
             손님에게 오늘의 %s을 친절하고 이해하기 쉽게 설명해 주세요.
             말투는 존댓말을 사용하고, 사주 카페에서 직접 말해주는 느낌으로 작성하세요.
@@ -188,12 +165,6 @@ public class TodaySajuService {
             }
 
             """, fortuneType, gender, manseInfo, todayDate, fortuneType);
-
-        OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setMaxTokens(300);
-        chatOptions.setTemperature(0.7);
-
-        return new Prompt(content, chatOptions);
     }
 
     /**
@@ -206,7 +177,7 @@ public class TodaySajuService {
     /**
      * 총운 프롬프트 생성 (세부운 결과 포함)
      */
-    private Prompt buildGeneralPrompt(String manseInfo, String gender, String todayDate, DetailFortuneResult detail) {
+    private String buildGeneralPrompt(String manseInfo, String gender, String todayDate, DetailFortuneResult detail) {
         // 세부운 평균 점수 계산 (100점 만점 환산)
         double avgScore = (detail.getWealthFortune().getScore() +
                           detail.getLoveFortune().getScore() +
@@ -230,7 +201,7 @@ public class TodaySajuService {
             avgScore
         );
 
-        String content = String.format("""
+        return String.format("""
             당신은 20년 경력의 사주 카페를 운영하는 전문 역술가입니다.
             손님에게 오늘의 총운을 친절하고 이해하기 쉽게 설명해 주세요.
             말투는 존댓말을 사용하고, 사주 카페에서 직접 말해주는 느낌으로 작성하세요.
@@ -266,12 +237,6 @@ public class TodaySajuService {
             }
 
             """, gender, manseInfo, todayDate, detailSummary);
-
-        OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setMaxTokens(700);
-        chatOptions.setTemperature(0.8);
-
-        return new Prompt(content, chatOptions);
     }
 
     /**

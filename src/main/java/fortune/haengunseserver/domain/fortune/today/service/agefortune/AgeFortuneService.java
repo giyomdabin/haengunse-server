@@ -3,11 +3,10 @@ package fortune.haengunseserver.domain.fortune.today.service.agefortune;
 import com.fasterxml.jackson.core.type.TypeReference;
 import fortune.haengunseserver.domain.fortune.today.dto.response.agefortune.AgeResponseDto;
 import fortune.haengunseserver.domain.gpt.service.FortuneRequestService;
+import fortune.haengunseserver.domain.gpt.service.MindLogicChatClient;
 import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,13 +15,13 @@ import java.util.List;
 @Slf4j
 public class AgeFortuneService extends FortuneRequestService<String, List<AgeResponseDto>> {
 
-    public AgeFortuneService(OpenAiChatModel chatModel) {
-        super(chatModel);
+    public AgeFortuneService(MindLogicChatClient chatClient) {
+        super(chatClient);
     }
 
     @Override
-    public Prompt generatePrompt(String input) {
-        String content = String.format("""
+    public String generatePrompt(String input) {
+        return String.format("""
                         오늘의 12지신 띠 운세(쥐띠, 소띠, 호랑이띠, 토끼띠, 용띠, 뱀띠, 말띠, 양띠, 원숭이띠, 닭띠, 개띠, 돼지띠)를 봐주세요.
 
                         오늘의 날짜는 다음과 같습니다:
@@ -47,8 +46,6 @@ public class AgeFortuneService extends FortuneRequestService<String, List<AgeRes
                 """,
                 input
         );
-
-        return new Prompt(content);
     }
 
     @Override

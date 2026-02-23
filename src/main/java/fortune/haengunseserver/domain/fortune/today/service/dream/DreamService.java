@@ -2,11 +2,10 @@ package fortune.haengunseserver.domain.fortune.today.service.dream;
 
 import fortune.haengunseserver.domain.fortune.today.dto.response.dream.DreamResponse;
 import fortune.haengunseserver.domain.gpt.service.FortuneRequestService;
+import fortune.haengunseserver.domain.gpt.service.MindLogicChatClient;
 import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -16,8 +15,8 @@ import java.util.List;
 @Slf4j
 public class DreamService extends FortuneRequestService<List<String>, DreamResponse> {
 
-    public DreamService(OpenAiChatModel chatModel) {
-        super(chatModel);
+    public DreamService(MindLogicChatClient chatClient) {
+        super(chatClient);
     }
 
     @Override
@@ -30,7 +29,7 @@ public class DreamService extends FortuneRequestService<List<String>, DreamRespo
     }
 
     @Override
-    public Prompt generatePrompt(List<String> questions) {
+    public String generatePrompt(List<String> questions) {
         StringBuilder contentBuilder = new StringBuilder();
         contentBuilder.append("다음을 보고 꿈을 해석해주세요:\n\n");
 
@@ -51,7 +50,7 @@ public class DreamService extends FortuneRequestService<List<String>, DreamRespo
         - "interpretation" : ".." 의 json 형식으로 답해주세요.
         """);
 
-        return new Prompt(contentBuilder.toString());
+        return contentBuilder.toString();
     }
 
     @Override
