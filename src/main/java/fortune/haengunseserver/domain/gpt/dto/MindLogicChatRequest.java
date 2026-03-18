@@ -7,7 +7,7 @@ import java.util.List;
 public record MindLogicChatRequest(
         String model,
         List<Message> messages,
-        @JsonProperty("max_tokens") Integer maxTokens,
+        @JsonProperty("max_completion_tokens") Integer maxTokens,
         Double temperature
 ) {
     public record Message(String role, String content) {}
