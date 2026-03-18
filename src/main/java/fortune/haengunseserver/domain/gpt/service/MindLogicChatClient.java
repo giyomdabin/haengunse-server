@@ -46,7 +46,6 @@ public class MindLogicChatClient {
         MindLogicChatRequest request = new MindLogicChatRequest(
                 model,
                 List.of(new MindLogicChatRequest.Message("user", content)),
-                maxTokens,
                 temperature
         );
 
