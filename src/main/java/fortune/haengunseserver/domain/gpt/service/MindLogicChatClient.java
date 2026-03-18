@@ -45,56 +45,54 @@ public class MindLogicChatClient {
     public Mono<String> call(String content, Integer maxTokens, Double temperature) {
         MindLogicChatRequest request = new MindLogicChatRequest(
                 model,
-                List.of(new MindLogicChatRequest.Message("user", content)),
-                temperature
+                List.of(new MindLogicChatRequest.Message("user", content))
         );
 
         return webClient.post()
                 .uri("/v1/api/openai/chat/completions")
                 .bodyValue(request)
-                .retrieve()
-                .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(60))
-                .flatMap(rawBody -> {
-                    log.debug("MindLogic API 원본 응답: {}", rawBody);
+                .exchangeToMono(response -> {
+                    return response.bodyToMono(String.class)
+                            .defaultIfEmpty("")
+                            .flatMap(rawBody -> {
+                                if (response.statusCode().isError()) {
+                                    log.error("MindLogic API 오류 - status: {}, body: {}", response.statusCode(), rawBody);
+                                    if (rawBody.contains("rate_limit")) {
+                                        return Mono.error(new CustomException(ErrorCode.GPT_OVERLOADED));
+                                    }
+                                    return Mono.error(new CustomException(ErrorCode.GPT_ERROR));
+                                }
 
-                    if (rawBody == null || rawBody.isBlank()) {
-                        log.error("MindLogic API 빈 응답 수신");
-                        return Mono.error(new CustomException(ErrorCode.GPT_ERROR));
-                    }
+                                if (rawBody.isBlank()) {
+                                    log.error("MindLogic API 빈 응답 수신");
+                                    return Mono.error(new CustomException(ErrorCode.GPT_ERROR));
+                                }
 
-                    // 에러 응답 체크
-                    if (rawBody.contains("\"detail\"") || rawBody.contains("\"error\"")) {
-                        log.error("MindLogic API 오류 응답: {}", rawBody);
-                        if (rawBody.contains("rate_limit")) {
-                            return Mono.error(new CustomException(ErrorCode.GPT_OVERLOADED));
-                        }
-                        return Mono.error(new CustomException(ErrorCode.GPT_ERROR));
-                    }
+                                try {
+                                    MindLogicChatResponse parsed = objectMapper.readValue(rawBody, MindLogicChatResponse.class);
 
-                    try {
-                        MindLogicChatResponse response = objectMapper.readValue(rawBody, MindLogicChatResponse.class);
+                                    if (parsed.usage() != null) {
+                                        log.info("GPT 토큰 사용량 - Prompt: {}, Completion: {}, Total: {}",
+                                                parsed.usage().promptTokens(),
+                                                parsed.usage().completionTokens(),
+                                                parsed.usage().totalTokens());
+                                    }
 
-                        if (response.usage() != null) {
-                            log.info("GPT 토큰 사용량 - Prompt: {}, Completion: {}, Total: {}",
-                                    response.usage().promptTokens(),
-                                    response.usage().completionTokens(),
-                                    response.usage().totalTokens());
-                        }
+                                    if (parsed.choices() != null && !parsed.choices().isEmpty()
+                                            && parsed.choices().get(0).message() != null
+                                            && parsed.choices().get(0).message().content() != null
+                                            && !parsed.choices().get(0).message().content().isBlank()) {
+                                        return Mono.just(parsed.choices().get(0).message().content());
+                                    }
 
-                        if (response.choices() != null && !response.choices().isEmpty()
-                                && response.choices().get(0).message() != null
-                                && response.choices().get(0).message().content() != null
-                                && !response.choices().get(0).message().content().isBlank()) {
-                            return Mono.just(response.choices().get(0).message().content());
-                        }
-
-                        log.error("MindLogic API choices 비어있음: {}", rawBody);
-                        return Mono.error(new CustomException(ErrorCode.GPT_ERROR));
-                    } catch (Exception e) {
-                        log.error("MindLogic API 응답 파싱 실패: {}", rawBody, e);
-                        return Mono.error(new CustomException(ErrorCode.GPT_ERROR));
-                    }
-                });
+                                    log.error("MindLogic API choices 비어있음: {}", rawBody);
+                                    return Mono.error(new CustomException(ErrorCode.GPT_ERROR));
+                                } catch (Exception e) {
+                                    log.error("MindLogic API 응답 파싱 실패: {}", rawBody, e);
+                                    return Mono.error(new CustomException(ErrorCode.GPT_ERROR));
+                                }
+                            });
+                })
+                .timeout(Duration.ofSeconds(60));
     }
 }
