@@ -71,12 +71,15 @@ public class MindLogicChatClient {
                                 response.usage().totalTokens());
                     }
                 })
-                .map(response -> {
+                .flatMap(response -> {
                     if (response.choices() != null && !response.choices().isEmpty()
-                            && response.choices().get(0).message() != null) {
-                        return response.choices().get(0).message().content();
+                            && response.choices().get(0).message() != null
+                            && response.choices().get(0).message().content() != null
+                            && !response.choices().get(0).message().content().isBlank()) {
+                        return Mono.just(response.choices().get(0).message().content());
                     }
-                    return "";
+                    log.error("MindLogic API 빈 응답 수신");
+                    return Mono.error(new CustomException(ErrorCode.GPT_ERROR));
                 });
     }
 }
