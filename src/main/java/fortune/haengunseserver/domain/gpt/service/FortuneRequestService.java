@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -65,6 +66,9 @@ public abstract class FortuneRequestService<T, R> implements FortuneService<T, R
      */
     protected CustomException mapToGptException(Throwable e) {
         String message = e.getMessage();
+        if (e instanceof WebClientResponseException wce) {
+            log.error("OpenAI API 오류 - Status: {}, Body: {}", wce.getStatusCode(), wce.getResponseBodyAsString());
+        }
         if (message != null && message.contains("rate_limit")) {
             return new CustomException(ErrorCode.GPT_OVERLOADED);
         }

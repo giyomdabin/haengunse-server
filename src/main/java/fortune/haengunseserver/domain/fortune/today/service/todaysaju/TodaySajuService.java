@@ -16,6 +16,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -78,6 +79,9 @@ public class TodaySajuService {
                 .onErrorMap(e -> {
                     if (e instanceof CustomException) {
                         return e;
+                    }
+                    if (e instanceof WebClientResponseException wce) {
+                        log.error("OpenAI API 오류 - Status: {}, Body: {}", wce.getStatusCode(), wce.getResponseBodyAsString());
                     }
                     log.error("오늘의 운세 조회 오류: {}", e.getMessage(), e);
                     return new CustomException(ErrorCode.GPT_ERROR);
