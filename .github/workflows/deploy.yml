@@ -50,9 +50,8 @@ jobs:
             
             # GitHub Secrets에서 직접 .env 파일 생성
             cat > .env <<EOF
-            MINDLOGIC_BASE_URL=${{ secrets.MINDLOGIC_BASE_URL }}
-            MINDLOGIC_API_KEY=${{ secrets.MINDLOGIC_API_KEY }}
-            MINDLOGIC_MODEL=${{ secrets.MINDLOGIC_MODEL }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            OPENAI_MODEL=${{ secrets.OPENAI_MODEL }}
             KASI_API_KEY=${{ secrets.KASI_API_KEY }}
             CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
             EOF
@@ -85,4 +84,4 @@ jobs:
             
             # 환경변수 로드 확인 (컨테이너 내부)
             echo "Checking environment variables in container:"
-            docker exec haengunse-app env | grep -E "(MINDLOGIC|KASI|CORS)" || echo "Environment variables not found in container"
+            docker exec haengunse-app env | grep -E "(OPENAI|KASI|CORS)" || echo "Environment variables not found in container"

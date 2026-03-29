@@ -5,10 +5,12 @@ spring:
     config:
         import: swagger-config.yml
 
-mindlogic:
-    base-url: ${MINDLOGIC_BASE_URL}
-    api-key: ${MINDLOGIC_API_KEY}
-    model: ${MINDLOGIC_MODEL}
+    ai:
+        openai:
+            api-key: ${OPENAI_API_KEY}
+            chat:
+                options:
+                    model: ${OPENAI_MODEL}
 
 kasi:
     api-key: ${KASI_API_KEY}

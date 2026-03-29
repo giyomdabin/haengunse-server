@@ -1,45 +1,33 @@
 package fortune.haengunseserver.domain.fortune.lifetime.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fortune.haengunseserver.domain.fortune.common.dto.request.SajuRequest;
 import fortune.haengunseserver.domain.fortune.common.util.GenderConverter;
 import fortune.haengunseserver.domain.fortune.common.util.ManseInfoFormatter;
 import fortune.haengunseserver.domain.fortune.lifetime.dto.response.LifetimeSajuResponse;
 import fortune.haengunseserver.domain.gpt.service.FortuneRequestService;
-import fortune.haengunseserver.domain.gpt.service.MindLogicChatClient;
 import fortune.haengunseserver.global.exception.CustomException;
 import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 
 @Service
 @Slf4j
 public class LifetimeFortuneService extends FortuneRequestService<SajuRequest, LifetimeSajuResponse> {
 
-    public LifetimeFortuneService(MindLogicChatClient chatClient) {
-        super(chatClient);
+    public LifetimeFortuneService(OpenAiChatModel chatModel) {
+        super(chatModel);
     }
 
     @Override
-    public Mono<LifetimeSajuResponse> getFortune(SajuRequest input) {
-        String content = generatePrompt(input);
-
-        return callApi(content, 800, 0.7)
-                .map(this::parseResponse)
-                .onErrorMap(e -> {
-                    if (e instanceof CustomException) {
-                        return e;
-                    }
-                    return mapToGptException(e);
-                });
-    }
-
-    @Override
-    public String generatePrompt(SajuRequest input) {
+    public Prompt generatePrompt(SajuRequest input) {
         String manseInfo = ManseInfoFormatter.format(input.getManseInfo());
         String gender = GenderConverter.toKorean(input.getGender());
 
-        return String.format("""
+        String content = String.format("""
                 당신은 유능한 사주 명리학자입니다.
                 다음 정보를 참고하여 사주팔자를 분석해주세요:
 
@@ -64,6 +52,12 @@ public class LifetimeFortuneService extends FortuneRequestService<SajuRequest, L
                   "tenGods": "..."
                 }
             """, gender, manseInfo);
+
+        OpenAiChatOptions chatOptions = new OpenAiChatOptions();
+        chatOptions.setMaxTokens(800);
+        chatOptions.setTemperature(0.7);
+
+        return new Prompt(content, chatOptions);
     }
 
     @Override

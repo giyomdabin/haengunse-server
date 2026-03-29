@@ -10,9 +10,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - MINDLOGIC_BASE_URL=${MINDLOGIC_BASE_URL}
-      - MINDLOGIC_API_KEY=${MINDLOGIC_API_KEY}
-      - MINDLOGIC_MODEL=${MINDLOGIC_MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
       - KASI_API_KEY=${KASI_API_KEY}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
     restart: always
