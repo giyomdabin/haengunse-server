@@ -11,7 +11,6 @@ import fortune.haengunseserver.global.exception.code.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -53,10 +52,7 @@ public class LifetimeFortuneService extends FortuneRequestService<SajuRequest, L
                 }
             """, gender, manseInfo);
 
-        OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setTemperature(0.7);
-
-        return new Prompt(content, chatOptions);
+        return new Prompt(content);
     }
 
     @Override

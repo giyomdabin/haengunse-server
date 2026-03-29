@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
@@ -173,10 +172,7 @@ public class TodaySajuService {
             JSON만 출력: {"score": , "description": ""}
             """, fortuneType, gender, manseInfo, todayDate, fortuneType);
 
-        OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setTemperature(0.7);
-
-        return new Prompt(content, chatOptions);
+        return new Prompt(content);
     }
 
     /**
@@ -212,10 +208,7 @@ public class TodaySajuService {
             JSON만 출력: {"totalScore": , "generalFortune": "", "dailyMessage": ""}
             """, gender, manseInfo, todayDate, detailSummary);
 
-        OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setTemperature(0.8);
-
-        return new Prompt(content, chatOptions);
+        return new Prompt(content);
     }
 
     /**
