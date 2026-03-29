@@ -54,7 +54,6 @@ public class LifetimeFortuneService extends FortuneRequestService<SajuRequest, L
             """, gender, manseInfo);
 
         OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setMaxTokens(800);
         chatOptions.setTemperature(0.7);
 
         return new Prompt(content, chatOptions);

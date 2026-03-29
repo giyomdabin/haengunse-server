@@ -157,40 +157,19 @@ public class TodaySajuService {
      */
     private Prompt buildFortunePrompt(String fortuneType, String manseInfo, String gender, String todayDate) {
         String content = String.format("""
-            당신은 20년 경력의 사주 카페를 운영하는 전문 역술가입니다.
-            손님에게 오늘의 %s을 친절하고 이해하기 쉽게 설명해 주세요.
-            말투는 존댓말을 사용하고, 사주 카페에서 직접 말해주는 느낌으로 작성하세요.
+            사주 전문 역술가로서 오늘의 %s을 존댓말로 설명해 주세요.
 
-            [사주 정보]
-            - 성별: %s
-            - 만세력: %s
-            - 오늘 날짜: %s
+            성별: %s / 만세력: %s / 오늘: %s
 
-            [점수 기준 / 5점 만점]
-            - 5.0: 천을귀인·삼합·육합 등 매우 좋은 조합
-            - 4.0~4.5: 기운이 도와주는 날(생, 용신 도움)
-            - 3.0~3.5: 무난한 흐름
-            - 2.0~2.5: 마찰·부담 주의(극, 형)
-            - 1.0~1.5: 충돌·어긋남(충, 파, 해)
-            - 0.5~1.0: 전반적으로 조심이 필요한 날
+            - %s만 작성
+            - 점수: 5점 만점 (0.5 단위)
+            - description: 6문장, 300자 이내로 간결하게
+            - 첫 1~2문장은 흐름 요약, 나머지는 실용적 조언
 
-            [작성 규칙]
-            - %s에 대해서만 작성
-            - 점수 + 6문장의 설명
-            - 첫 1~2줄: 오늘 운의 흐름 요약
-            - 나머지: 실제 행동에 도움이 되는 조언
-            - 점수가 낮으면 대처법, 높으면 활용법 제시
-
-            [출력 형식 — JSON만]
-            {
-              "score": ,
-              "description": ""
-            }
-
+            JSON만 출력: {"score": , "description": ""}
             """, fortuneType, gender, manseInfo, todayDate, fortuneType);
 
         OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setMaxTokens(300);
         chatOptions.setTemperature(0.7);
 
         return new Prompt(content, chatOptions);
@@ -207,79 +186,32 @@ public class TodaySajuService {
      * 총운 프롬프트 생성 (세부운 결과 포함)
      */
     private Prompt buildGeneralPrompt(String manseInfo, String gender, String todayDate, DetailFortuneResult detail) {
-        // 세부운 평균 점수 계산 (100점 만점 환산)
-        double avgScore = (detail.getWealthFortune().getScore() +
-                          detail.getLoveFortune().getScore() +
-                          detail.getHealthFortune().getScore() +
-                          detail.getStudyFortune().getScore() +
-                          detail.getCareerFortune().getScore()) / 5.0 * 20.0;
-
-        String detailSummary = String.format("""
-            - 재물운: %.1f점 - %s
-            - 연애운: %.1f점 - %s
-            - 건강운: %.1f점 - %s
-            - 학업운: %.1f점 - %s
-            - 직장운: %.1f점 - %s
-            (세부운 평균: %.0f점/100점)
-            """,
-            detail.getWealthFortune().getScore(), truncate(detail.getWealthFortune().getDescription(), 50),
-            detail.getLoveFortune().getScore(), truncate(detail.getLoveFortune().getDescription(), 50),
-            detail.getHealthFortune().getScore(), truncate(detail.getHealthFortune().getDescription(), 50),
-            detail.getStudyFortune().getScore(), truncate(detail.getStudyFortune().getDescription(), 50),
-            detail.getCareerFortune().getScore(), truncate(detail.getCareerFortune().getDescription(), 50),
-            avgScore
+        String detailSummary = String.format(
+            "재물운: %.1f / 연애운: %.1f / 건강운: %.1f / 학업운: %.1f / 직장운: %.1f",
+            detail.getWealthFortune().getScore(),
+            detail.getLoveFortune().getScore(),
+            detail.getHealthFortune().getScore(),
+            detail.getStudyFortune().getScore(),
+            detail.getCareerFortune().getScore()
         );
 
         String content = String.format("""
-            당신은 20년 경력의 사주 카페를 운영하는 전문 역술가입니다.
-            손님에게 오늘의 총운을 친절하고 이해하기 쉽게 설명해 주세요.
-            말투는 존댓말을 사용하고, 사주 카페에서 직접 말해주는 느낌으로 작성하세요.
+            사주 전문 역술가로서 오늘의 총운을 존댓말로 설명해 주세요.
 
-            [사주 정보]
-            - 성별: %s
-            - 만세력: %s
-            - 오늘 날짜: %s
+            성별: %s / 만세력: %s / 오늘: %s
+            세부운 점수(5점 만점): %s
 
-            [세부 운세 결과]
-            %s
+            - totalScore: 100점 만점, 세부운 결과를 반영
+            - generalFortune: 6문장, 300자 이내로 간결하게. 세부운을 종합한 실용적 조언
+            - dailyMessage: 핵심 조언 25자 이내
 
-            [총점 기준 / 100점 만점]
-            - 85~100점: 천을귀인·삼합·육합 등 매우 좋은 조합
-            - 70~84점: 기운이 도와주는 날(생, 용신 도움)
-            - 50~69점: 무난한 흐름
-            - 40~49점: 마찰·부담 주의(극, 형)
-            - 20~39점: 충돌·어긋남(충, 파, 해)
-            - 0~19점: 전반적으로 조심이 필요한 날
-
-            [작성 규칙]
-            - 총운은 6문장으로 작성
-            - 첫 1~2줄: 오늘 전체적인 운의 흐름 요약
-            - 나머지: 세부 운세를 종합하여 실제 행동에 도움이 되는 조언
-            - 점수가 높은 운세는 어떻게 활용할지, 낮은 운세는 어떻게 대처할지 제시
-            - dailyMessage는 오늘의 핵심 조언 (25자 이내)
-
-            [출력 형식 — JSON만]
-            {
-              "totalScore": ,
-              "generalFortune": "",
-              "dailyMessage": ""
-            }
-
+            JSON만 출력: {"totalScore": , "generalFortune": "", "dailyMessage": ""}
             """, gender, manseInfo, todayDate, detailSummary);
 
         OpenAiChatOptions chatOptions = new OpenAiChatOptions();
-        chatOptions.setMaxTokens(700);
         chatOptions.setTemperature(0.8);
 
         return new Prompt(content, chatOptions);
-    }
-
-    /**
-     * 문자열 자르기 (프롬프트 길이 제한용)
-     */
-    private String truncate(String text, int maxLength) {
-        if (text == null) return "";
-        return text.length() > maxLength ? text.substring(0, maxLength) + "..." : text;
     }
 
     /**

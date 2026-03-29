@@ -1,5 +1,5 @@
 HELP.md
-PERFORMANCE_IMPROVEMENT.md
+docs/PERFORMANCE_IMPROVEMENT.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -8,6 +8,7 @@ build/
 application-dev.yml
 .env
 .CLAUDE.md
+docs
 
 # json 파일 무시
 src/main/resources/data/age_fortune
