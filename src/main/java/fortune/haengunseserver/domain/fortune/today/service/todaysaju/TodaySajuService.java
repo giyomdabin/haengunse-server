@@ -24,7 +24,7 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * 오늘의 운세 서비스 클래스
- * 세부운 먼저 조회 → 세부운 결과를 기반으로 총운 생성 (일관성 보장)
+ * 세부운 5개 병렬 조회 → 세부운 결과를 기반으로 총운 생성 (일관성 보장)
  */
 @Service
 @RequiredArgsConstructor
@@ -47,11 +47,16 @@ public class TodaySajuService {
         log.info("오늘의 운세 조회 시작 - 만세력: {}", manseInfo);
 
         // 1단계: 5개 세부운을 병렬로 호출
-        Mono<FortuneDetail> wealthMono = getWealthFortune(manseInfo, gender, todayDate);
-        Mono<FortuneDetail> loveMono = getLoveFortune(manseInfo, gender, todayDate);
-        Mono<FortuneDetail> healthMono = getHealthFortune(manseInfo, gender, todayDate);
-        Mono<FortuneDetail> studyMono = getStudyFortune(manseInfo, gender, todayDate);
-        Mono<FortuneDetail> careerMono = getCareerFortune(manseInfo, gender, todayDate);
+        Mono<FortuneDetail> wealthMono = callGpt(buildFortunePrompt("재물운", manseInfo, gender, todayDate))
+                .map(json -> parseJson(json, FortuneDetail.class));
+        Mono<FortuneDetail> loveMono = callGpt(buildFortunePrompt("연애운", manseInfo, gender, todayDate))
+                .map(json -> parseJson(json, FortuneDetail.class));
+        Mono<FortuneDetail> healthMono = callGpt(buildFortunePrompt("건강운", manseInfo, gender, todayDate))
+                .map(json -> parseJson(json, FortuneDetail.class));
+        Mono<FortuneDetail> studyMono = callGpt(buildFortunePrompt("학업운", manseInfo, gender, todayDate))
+                .map(json -> parseJson(json, FortuneDetail.class));
+        Mono<FortuneDetail> careerMono = callGpt(buildFortunePrompt("직장운", manseInfo, gender, todayDate))
+                .map(json -> parseJson(json, FortuneDetail.class));
 
         // 5개 병렬 호출 후 결과를 합침
         return Mono.zip(wealthMono, loveMono, healthMono, studyMono, careerMono)
@@ -88,21 +93,10 @@ public class TodaySajuService {
     }
 
     /**
-     * GPT 스트리밍 호출 (토큰 사용량 로깅 포함)
+     * GPT 스트리밍 호출
      */
     private Mono<String> callGpt(Prompt prompt) {
         return Flux.from(chatModel.stream(prompt))
-                .doOnNext(response -> {
-                    // 토큰 사용량 로깅
-                    if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
-                        var usage = response.getMetadata().getUsage();
-                        log.info("GPT 토큰 사용량 - Prompt: {}, Completion: {}, Total: {}",
-                            usage.getPromptTokens(),
-                            usage.getGenerationTokens(),
-                            usage.getTotalTokens()
-                        );
-                    }
-                })
                 .map(response -> {
                     if (response.getResult() != null &&
                         response.getResult().getOutput() != null &&
@@ -116,46 +110,6 @@ public class TodaySajuService {
     }
 
     /**
-     * 재물운 조회
-     */
-    private Mono<FortuneDetail> getWealthFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("재물운", manseInfo, gender, todayDate))
-                .map(json -> parseFortuneDetail(json));
-    }
-
-    /**
-     * 연애운 조회
-     */
-    private Mono<FortuneDetail> getLoveFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("연애운", manseInfo, gender, todayDate))
-                .map(json -> parseFortuneDetail(json));
-    }
-
-    /**
-     * 건강운 조회
-     */
-    private Mono<FortuneDetail> getHealthFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("건강운", manseInfo, gender, todayDate))
-                .map(json -> parseFortuneDetail(json));
-    }
-
-    /**
-     * 학업운 조회
-     */
-    private Mono<FortuneDetail> getStudyFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("학업운", manseInfo, gender, todayDate))
-                .map(json -> parseFortuneDetail(json));
-    }
-
-    /**
-     * 직장운 조회
-     */
-    private Mono<FortuneDetail> getCareerFortune(String manseInfo, String gender, String todayDate) {
-        return callGpt(buildFortunePrompt("직장운", manseInfo, gender, todayDate))
-                .map(json -> parseFortuneDetail(json));
-    }
-
-    /**
      * 개별 운세 프롬프트 생성 (재물/연애/건강/학업/직장)
      */
     private Prompt buildFortunePrompt(String fortuneType, String manseInfo, String gender, String todayDate) {
@@ -166,20 +120,13 @@ public class TodaySajuService {
 
             - %s만 작성
             - 점수: 5점 만점 (0.5 단위)
-            - description: 6문장, 300자 이내로 간결하게
+            - description: 5문장, 300자 이내로 간결하게
             - 첫 1~2문장은 흐름 요약, 나머지는 실용적 조언
 
             JSON만 출력: {"score": , "description": ""}
             """, fortuneType, gender, manseInfo, todayDate, fortuneType);
 
         return new Prompt(content);
-    }
-
-    /**
-     * 개별 운세 JSON 파싱
-     */
-    private FortuneDetail parseFortuneDetail(String json) {
-        return parseJson(json, FortuneDetail.class);
     }
 
     /**
@@ -202,7 +149,7 @@ public class TodaySajuService {
             세부운 점수(5점 만점): %s
 
             - totalScore: 100점 만점, 세부운 결과를 반영
-            - generalFortune: 6문장, 300자 이내로 간결하게. 세부운을 종합한 실용적 조언
+            - generalFortune: 5문장, 300자 이내로 간결하게. 세부운을 종합한 실용적 조언
             - dailyMessage: 핵심 조언 25자 이내
 
             JSON만 출력: {"totalScore": , "generalFortune": "", "dailyMessage": ""}
