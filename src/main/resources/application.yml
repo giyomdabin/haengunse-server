@@ -11,6 +11,7 @@ spring:
             chat:
                 options:
                     model: ${OPENAI_MODEL}
+                    temperature: 1.0
 
 kasi:
     api-key: ${KASI_API_KEY}
