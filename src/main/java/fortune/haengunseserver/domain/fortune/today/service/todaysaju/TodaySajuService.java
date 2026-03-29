@@ -19,6 +19,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -106,7 +107,8 @@ public class TodaySajuService {
                     return "";
                 })
                 .reduce("", String::concat)
-                .map(this::cleanJsonResponse);
+                .map(this::cleanJsonResponse)
+                .timeout(Duration.ofSeconds(60));
     }
 
     /**

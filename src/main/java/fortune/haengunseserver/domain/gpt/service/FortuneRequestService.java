@@ -11,6 +11,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+
 @RequiredArgsConstructor
 @Slf4j
 public abstract class FortuneRequestService<T, R> implements FortuneService<T, R> {
@@ -46,7 +48,8 @@ public abstract class FortuneRequestService<T, R> implements FortuneService<T, R
                     return "";
                 })
                 .reduce("", String::concat)
-                .map(this::cleanJsonResponse);
+                .map(this::cleanJsonResponse)
+                .timeout(Duration.ofSeconds(60));
     }
 
     /**
