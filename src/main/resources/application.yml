@@ -12,6 +12,7 @@ spring:
                 options:
                     model: ${OPENAI_MODEL}
                     temperature: 1.0
+                    reasoning_effort: low
 
 kasi:
     api-key: ${KASI_API_KEY}
